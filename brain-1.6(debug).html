@@ -1,0 +1,182 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Keyboard Click Timer</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-size: cover;
+                background-position: center;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            #topControls {
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                position: absolute;
+                top: 0;
+                width: 100%;
+                background: #e0e3f3;
+                padding: 10px 0;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            #output {
+                background: rgba(255, 255, 255, 0.8);
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                width: 50%;
+                max-width: 500px;
+                text-align: center;
+                margin-top: 120px;
+                overflow-y: auto;
+                max-height: 70vh;
+            }
+            #timerDisplay {
+                font-size: 1.5em;
+                font-weight: bold;
+                color: #d9534f;
+                margin-right: 20px;
+            }
+            p {
+                font-size: 1.2em;
+                color: #333;
+            }
+            strong {
+                color: #007BFF;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 1em;
+                color: black;
+                background-color: #91c400;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background 0.3s;
+                margin: 5px;
+            }
+             buttonRetry {
+                padding: 10px 20px;
+                font-size: 1em;
+                color: black;
+                background-color: #FA4141;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background 0.3s;
+                margin: 5px;
+            }
+            button:disabled {
+                background-color: gray;
+                cursor: not-allowed;
+            }
+            button:hover:not(:disabled) {
+                background-color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="topControls">
+            <div id="timerDisplay"></div>
+            <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
+            <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
+            <buttonRetry onclick="resetOutput()">Retry</buttonRetry>
+        </div>
+        <div id="output"><p>Click the buttons to START!</p></div>
+
+        <audio id="soundG" src="/Users/volodymyrmishchenko/Desktop/BRAIN/mixkit-system-beep-buzzer-fail-2964.wav"></audio>
+        <audio id="soundR" src="/Users/volodymyrmishchenko/Desktop/BRAIN/mixkit-censorship-beep-1082.wav"></audio>
+        <audio id="soundB" src="/Users/volodymyrmishchenko/Desktop/BRAIN/mixkit-positive-interface-beep-221.wav"></audio>
+        <audio id="soundOff" src="/Users/volodymyrmishchenko/Desktop/BRAIN/mixkit-classic-clock-gong-1066.wav"></audio>
+
+        <script>
+           let lastClickTime = 0;
+           let clickTimes = [];
+           let listening = true;
+           let timer;
+           let countdown;
+
+           document.addEventListener('keydown', (event) => {
+               if (!listening) return;
+               const currentTime = new Date().getTime();
+               let message = "";
+               
+               if (['g', 'G', 'п', 'П'].includes(event.key)) {
+                   message = "<strong style='color:green;'>Green team clicked</strong>";
+                   document.getElementById('soundG').play();
+               } else if (['b', 'B', 'и', 'И'].includes(event.key)) {
+                   message = "<strong style='color:blue;'>Blue team clicked</strong>";
+                   document.getElementById('soundB').play();
+               } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
+                   message = "<strong style='color:red;'>Red team clicked</strong>";
+                   document.getElementById('soundR').play();
+               } else {
+                   return;
+               }
+
+               if (lastClickTime !== 0) {
+                   const timeDifference = (currentTime - lastClickTime) / 1000;
+                   const formattedTime = timeDifference.toFixed(2).replace('.', ',');
+                   clickTimes.push(timeDifference);
+                   document.getElementById('output').innerHTML += 
+                       `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
+               } else {
+                   document.getElementById('output').innerHTML += 
+                       `<p>${message} | First </p>`;
+               }
+
+               lastClickTime = currentTime;
+           });
+
+           
+
+           function startTimer(duration) {
+               listening = true;
+               document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
+               
+               document.getElementById('timer1Btn').disabled = true;
+               document.getElementById('timer2Btn').disabled = true;
+
+               let timeLeft = duration;
+               document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
+
+               countdown = setInterval(() => {
+                   timeLeft--;
+                   document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
+                   if (timeLeft <= 0) {
+                       clearInterval(countdown);
+                   }
+               }, 1000);
+               
+               timer = setTimeout(() => {
+                   listening = false;
+                   document.getElementById('output').innerHTML += "<p><strong style='color:red;'>Time's up! Keyboard input stopped.</strong></p>";
+                   document.getElementById('timerDisplay').innerText = "Time's up!";
+                   document.getElementById('soundOff').play();
+               }, duration * 1000);
+           }
+
+           function resetOutput() {
+               document.getElementById('output').innerHTML = "<p>Click the buttons to START!</p>";
+               document.getElementById('timerDisplay').innerText = "";
+               lastClickTime = 0;
+               clickTimes = [];
+               clearTimeout(timer);
+               clearInterval(countdown);
+               listening = true;
+               document.getElementById('timer1Btn').disabled = false;
+               document.getElementById('timer2Btn').disabled = false;
+           }
+        </script>
+    </body>
+    </html>
