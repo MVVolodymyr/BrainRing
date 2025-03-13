@@ -1,4 +1,5 @@
 // Function to save click history
+
 function saveClickHistory(message) {
     let history = JSON.parse(localStorage.getItem("clickHistory")) || [];
     history.push({ message, timestamp: new Date().toLocaleString() });
