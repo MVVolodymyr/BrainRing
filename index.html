@@ -90,9 +90,9 @@
             <div id="timerDisplay"></div>
             <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
             <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
-            <buttonRetry onclick="resetOutput()">Retry</buttonRetry>
+            <buttonRetry onclick="Next Round()">Retry</buttonRetry>
         </div>
-        <div id="output"><p>Click the buttons to START!</p></div>
+        <div id="output"><p>Lets the battle begin!</p></div>
 
         <audio id="soundG" src="audio/mixkit-car-horn-718.wav"></audio>
         <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
@@ -106,32 +106,49 @@
            let timer;
            let countdown;
 
+           let clickedTeams = {
+                green: false,
+                blue: false,
+                red: false
+            };
+
            document.addEventListener('keydown', (event) => {
                if (!listening) return;
+
                const currentTime = new Date().getTime();
                let message = "";
-               
+                let team = "";
+
                if (['g', 'G', 'п', 'П'].includes(event.key)) {
+                   team = "green";
+                   if (clickedTeams.green) return; // Ignore if already clicked
+                   clickedTeams.green = true;
                    message = "<strong style='color:green;'>Green team clicked</strong>";
                    document.getElementById('soundG').play();
                } else if (['b', 'B', 'и', 'И'].includes(event.key)) {
-                   message = "<strong style='color:blue;'>Blue team clicked</strong>";
-                   document.getElementById('soundB').play();
-               } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
-                   message = "<strong style='color:red;'>Red team clicked</strong>";
-                   document.getElementById('soundR').play();
-               } else {
-                   return;
-               }
+                    team = "blue";
+                    if (clickedTeams.blue) return; // Ignore if already clicked
+                    clickedTeams.blue = true;
+                    message = "<strong style='color:blue;'>Blue team clicked</strong>";
+                    document.getElementById('soundB').play();
+                } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
+                    team = "red";
+                    if (clickedTeams.red) return; // Ignore if already clicked
+                    clickedTeams.red = true;
+                    message = "<strong style='color:red;'>Red team clicked</strong>";
+                    document.getElementById('soundR').play();
+                } else {
+                    return;
+                }
 
                if (lastClickTime !== 0) {
                    const timeDifference = (currentTime - lastClickTime) / 1000;
                    const formattedTime = timeDifference.toFixed(2).replace('.', ',');
                    clickTimes.push(timeDifference);
-                   document.getElementById('output').innerHTML += 
+                   document.getElementById('output').innerHTML +=
                        `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
                } else {
-                   document.getElementById('output').innerHTML += 
+                   document.getElementById('output').innerHTML +=
                        `<p>${message} | First </p>`;
                }
 
@@ -176,7 +193,12 @@
                listening = true;
                document.getElementById('timer1Btn').disabled = false;
                document.getElementById('timer2Btn').disabled = false;
+
+               clickedTeams.green = false;
+               clickedTeams.blue = false;
+               clickedTeams.red = false;
            }
         </script>
+
     </body>
     </html>
