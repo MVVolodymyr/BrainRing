@@ -90,7 +90,7 @@
             <div id="timerDisplay"></div>
             <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
             <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
-            <buttonRetry onclick="Next Round()">Retry</buttonRetry>
+            <buttonRetry id="retryBtn" onclick="resetOutput()">Retry</buttonRetry>
         </div>
         <div id="output"><p>Lets the battle begin!</p></div>
 
@@ -183,21 +183,21 @@
                }, duration * 1000);
            }
 
-           function resetOutput() {
-               document.getElementById('output').innerHTML = "<p>Click the buttons to START!</p>";
-               document.getElementById('timerDisplay').innerText = "";
-               lastClickTime = 0;
-               clickTimes = [];
-               clearTimeout(timer);
-               clearInterval(countdown);
-               listening = true;
-               document.getElementById('timer1Btn').disabled = false;
-               document.getElementById('timer2Btn').disabled = false;
+                function resetOutput() {
+                    document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
+                    document.getElementById('timerDisplay').innerText = "";
+                    lastClickTime = 0;
+                    clickTimes = [];
+                    clearTimeout(timer);
+                    clearInterval(countdown);
+                    listening = true;
+                    document.getElementById('timer1Btn').disabled = false;
+                    document.getElementById('timer2Btn').disabled = false;
 
-               clickedTeams.green = false;
-               clickedTeams.blue = false;
-               clickedTeams.red = false;
-           }
+                    clickedTeams.green = false;
+                    clickedTeams.blue = false;
+                    clickedTeams.red = false;
+                }
         </script>
 
     </body>
