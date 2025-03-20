@@ -206,6 +206,12 @@
                     clickedTeams.green = false;
                     clickedTeams.blue = false;
                     clickedTeams.red = false;
+
+                     document.querySelectorAll('audio').forEach(audio => {
+                            audio.pause();
+                            audio.currentTime = 0;
+                     });
+
                 }
         </script>
 
