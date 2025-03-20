@@ -98,6 +98,9 @@
         <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
         <audio id="soundB" src="audio/mixkit-impact-of-a-blow-2150.wav"></audio>
         <audio id="soundOff" src="audio/mixkit-sad-game-over-trombone-471.wav"></audio>
+        <audio id="soundBackground1" src="audio/mixkit-game-show-suspense-waiting-667-59sec.wav"></audio>
+        <audio id="soundBackground2" src="audio/mixkit-game-show-suspense-waiting-667-1min59sec.wav"></audio>
+
 
         <script>
            let lastClickTime = 0;
@@ -163,6 +166,12 @@
                
                document.getElementById('timer1Btn').disabled = true;
                document.getElementById('timer2Btn').disabled = true;
+
+               if (duration === 60) {
+                   document.getElementById('soundBackground1').play();
+               } else if (duration === 120) {
+                   document.getElementById('soundBackground2').play();
+               }
 
                let timeLeft = duration;
                document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
