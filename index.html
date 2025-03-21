@@ -1,6 +1,15 @@
     <!DOCTYPE html>
     <html lang="en">
     <head>
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-5M9PGYFQNR"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-5M9PGYFQNR');
+        </script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Brain Ring</title>
@@ -83,6 +92,17 @@
             button:hover:not(:disabled) {
                 background-color: #0056b3;
             }
+            #muteBtn {
+                background: none;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+            }
+
+            #muteBtn img {
+                width: 30px; /* Adjust size if needed */
+                height: 30px;
+            }
         </style>
     </head>
     <body>
@@ -90,14 +110,18 @@
             <div id="timerDisplay"></div>
             <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
             <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
-            <buttonRetry onclick="resetOutput()">Retry</buttonRetry>
+            <buttonRetry id="retryBtn" onclick="resetOutput()">Retry</buttonRetry>
+            <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" width="30" onclick="toggleMute()" style="cursor: pointer;">
         </div>
-        <div id="output"><p>Click the buttons to START!</p></div>
+        <div id="output"><p>Lets the battle begin!</p></div>
 
         <audio id="soundG" src="audio/mixkit-car-horn-718.wav"></audio>
         <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
         <audio id="soundB" src="audio/mixkit-impact-of-a-blow-2150.wav"></audio>
-        <audio id="soundOff" src="audio/mixkit-weak-hit-impact-2148.wav"></audio>
+        <audio id="soundOff" src="audio/mixkit-sad-game-over-trombone-471.wav"></audio>
+        <audio id="soundBackground1" src="audio/mixkit-game-show-suspense-waiting-667-1min.mp3"></audio>
+        <audio id="soundBackground2" src="audio/mixkit-game-show-suspense-waiting-667-2min.mp3"></audio>
+
 
         <script>
            let lastClickTime = 0;
@@ -106,32 +130,49 @@
            let timer;
            let countdown;
 
+           let clickedTeams = {
+                green: false,
+                blue: false,
+                red: false
+            };
+
            document.addEventListener('keydown', (event) => {
                if (!listening) return;
+
                const currentTime = new Date().getTime();
                let message = "";
-               
+                let team = "";
+
                if (['g', 'G', 'п', 'П'].includes(event.key)) {
+                   team = "green";
+                   if (clickedTeams.green) return; // Ignore if already clicked
+                   clickedTeams.green = true;
                    message = "<strong style='color:green;'>Green team clicked</strong>";
                    document.getElementById('soundG').play();
                } else if (['b', 'B', 'и', 'И'].includes(event.key)) {
-                   message = "<strong style='color:blue;'>Blue team clicked</strong>";
-                   document.getElementById('soundB').play();
-               } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
-                   message = "<strong style='color:red;'>Red team clicked</strong>";
-                   document.getElementById('soundR').play();
-               } else {
-                   return;
-               }
+                    team = "blue";
+                    if (clickedTeams.blue) return; // Ignore if already clicked
+                    clickedTeams.blue = true;
+                    message = "<strong style='color:blue;'>Blue team clicked</strong>";
+                    document.getElementById('soundB').play();
+                } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
+                    team = "red";
+                    if (clickedTeams.red) return; // Ignore if already clicked
+                    clickedTeams.red = true;
+                    message = "<strong style='color:red;'>Red team clicked</strong>";
+                    document.getElementById('soundR').play();
+                } else {
+                    return;
+                }
 
                if (lastClickTime !== 0) {
                    const timeDifference = (currentTime - lastClickTime) / 1000;
                    const formattedTime = timeDifference.toFixed(2).replace('.', ',');
                    clickTimes.push(timeDifference);
-                   document.getElementById('output').innerHTML += 
+                   document.getElementById('output').innerHTML +=
                        `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
                } else {
-                   document.getElementById('output').innerHTML += 
+                   document.getElementById('output').innerHTML +=
                        `<p>${message} | First </p>`;
                }
 
@@ -147,6 +188,12 @@
                document.getElementById('timer1Btn').disabled = true;
                document.getElementById('timer2Btn').disabled = true;
 
+               if (duration === 60) {
+                   document.getElementById('soundBackground1').play();
+               } else if (duration === 120) {
+                   document.getElementById('soundBackground2').play();
+               }
+
                let timeLeft = duration;
                document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
 
@@ -157,6 +204,8 @@
                        clearInterval(countdown);
                    }
                }, 1000);
+
+
                
                timer = setTimeout(() => {
                    listening = false;
@@ -166,17 +215,41 @@
                }, duration * 1000);
            }
 
-           function resetOutput() {
-               document.getElementById('output').innerHTML = "<p>Click the buttons to START!</p>";
-               document.getElementById('timerDisplay').innerText = "";
-               lastClickTime = 0;
-               clickTimes = [];
-               clearTimeout(timer);
-               clearInterval(countdown);
-               listening = true;
-               document.getElementById('timer1Btn').disabled = false;
-               document.getElementById('timer2Btn').disabled = false;
-           }
+                function resetOutput() {
+                    document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
+                    document.getElementById('timerDisplay').innerText = "";
+                    lastClickTime = 0;
+                    clickTimes = [];
+                    clearTimeout(timer);
+                    clearInterval(countdown);
+                    listening = true;
+                    document.getElementById('timer1Btn').disabled = false;
+                    document.getElementById('timer2Btn').disabled = false;
+
+                    clickedTeams.green = false;
+                    clickedTeams.blue = false;
+                    clickedTeams.red = false;
+
+                     document.querySelectorAll('audio').forEach(audio => {
+                            audio.pause();
+                            audio.currentTime = 0;
+                     });
+
+
+
+                }
+                    let isMuted = false; // Make isMuted global
+                    function toggleMute() {
+                        isMuted = !isMuted; // Toggle mute state
+
+                        document.querySelectorAll('audio').forEach(audio => {
+                            audio.muted = isMuted; // Mute/unmute all audio
+                        });
+
+                        // Change button icon based on mute state
+                        document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
+                    }
         </script>
+
     </body>
     </html>
