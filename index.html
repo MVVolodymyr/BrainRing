@@ -118,9 +118,14 @@
         <audio id="soundG" src="audio/mixkit-car-horn-718.wav"></audio>
         <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
         <audio id="soundB" src="audio/mixkit-impact-of-a-blow-2150.wav"></audio>
+        <audio id="soundW" src="audio/mixkit-bonus-collect-award-1937.wav"></audio>
+        <audio id="soundY" src="audio/mixkit-fairy-arcade-sparkle-866.wav"></audio>
+        <audio id="soundP" src="audio/mixkit-retro-game-notification-212.wav"></audio>
+
+
         <audio id="soundOff" src="audio/mixkit-service-bell-931.wav"></audio>
-        <audio id="soundBackground1" src="audio/.."></audio>
-        <audio id="soundBackground2" src="audio/.."></audio>
+        <audio id="soundBackground1" src="audio/final_audio_59_8s.mp3"></audio>
+        <audio id="soundBackground2" src="audio/final_audio_1min59_8s.mp3"></audio>
 
         <script>
            let lastClickTime = 0;
@@ -132,7 +137,10 @@
            let clickedTeams = {
                 green: false,
                 blue: false,
-                red: false
+                red: false,
+                white: false,
+                yellow: false,
+                pink: false
             };
 
            document.addEventListener('keydown', (event) => {
@@ -160,6 +168,24 @@
                     clickedTeams.red = true;
                     message = "<strong style='color:red;'>Red team clicked</strong>";
                     document.getElementById('soundR').play();
+                } else if (['w', 'W', 'ц', 'Ц'].includes(event.key)) {
+                    team = "white";
+                    if (clickedTeams.white) return; // Ignore if already clicked
+                    clickedTeams.white = true;
+                    message = "<strong style='color:#C9C5B1;'>White team clicked</strong>";
+                    document.getElementById('soundW').play();
+                } else if (['y', 'Y', 'н', 'Н'].includes(event.key)) {
+                    team = "yellow";
+                    if (clickedTeams.yellow) return; // Ignore if already clicked
+                    clickedTeams.yellow = true;
+                    message = "<strong style='color:#FFD32C;'>Yellow team clicked</strong>";
+                    document.getElementById('soundY').play();
+                } else if (['p', 'P', 'з', 'З'].includes(event.key)) {
+                    team = "pink";
+                    if (clickedTeams.pink) return; // Ignore if already clicked
+                    clickedTeams.pink = true;
+                    message = "<strong style='color:pink;'>Pink team clicked</strong>";
+                    document.getElementById('soundP').play();
                 } else {
                     return;
                 }
