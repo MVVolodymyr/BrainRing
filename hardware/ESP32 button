@@ -1,0 +1,52 @@
+// =====================
+// КОД ДЛЯ КЛІЄНТА (ESP32-КНОПКА)
+// =====================
+
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// Налаштування Wi-Fi (має збігатися з ESP32-сервером)
+const char* ssid = "ESP32_SERVER_AP";
+const char* password = "12345678";
+
+// IP сервера ESP32, який підключено до ПК
+const char* serverIP = "192.168.4.1";
+
+// Яку кнопку емує ця плата (змінюй при потребі: 'R', 'G', 'B', 'Y', 'W', 'P')
+const char* key = "R";
+
+const int buttonPin = 0; // GPIO, до якого підключена кнопка
+bool lastState = HIGH;
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP);
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+}
+
+void loop() {
+  bool state = digitalRead(buttonPin);
+  if (lastState == HIGH && state == LOW) { // натискання кнопки
+    sendKey();
+    delay(300); // затримка для debounce
+  }
+  lastState = state;
+}
+
+void sendKey() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String("http://") + serverIP + "/key?val=" + key;
+    http.begin(url);
+    int httpResponseCode = http.GET();
+    http.end();
+  }
+}
+
+

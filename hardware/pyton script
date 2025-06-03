@@ -1,0 +1,37 @@
+import serial
+import time
+import keyboard  # pip install keyboard
+
+# Налаштування порту (заміни на свій)
+SERIAL_PORT = 'COM5'  # Наприклад: COM3 на Windows, /dev/ttyUSB0 на Linux
+BAUD_RATE = 115200
+
+# Відкриваємо серійне з'єднання
+ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+print(f"Listening on {SERIAL_PORT}...")
+
+# Відповідність команд до клавіш
+KEY_MAP = {
+    'R': 'r',
+    'G': 'g',
+    'B': 'b',
+    'Y': 'y',
+    'W': 'w',
+    'P': 'p'
+}
+
+try:
+    while True:
+        line = ser.readline().decode('utf-8').strip()
+        if line.startswith("KEY:"):
+            key = line[4:].strip().upper()
+            if key in KEY_MAP:
+                print(f"Simulating key press: {KEY_MAP[key]}")
+                keyboard.press_and_release(KEY_MAP[key])
+        time.sleep(0.01)
+
+except KeyboardInterrupt:
+    print("\nExiting...")
+
+finally:
+    ser.close()
