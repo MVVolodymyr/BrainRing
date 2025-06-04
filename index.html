@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +7,6 @@
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-
         gtag('config', 'G-5M9PGYFQNR');
     </script>
     <meta charset="UTF-8">
@@ -88,16 +86,8 @@
             transition: background 0.3s;
             margin: 5px;
         }
-        buttonRetry {
-            padding: 10px 20px;
-            font-size: 1em;
-            color: black;
+        .retryBtn {
             background-color: #FA4141;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin: 5px;
         }
         button:disabled {
             background-color: gray;
@@ -113,7 +103,7 @@
             cursor: pointer;
         }
         #muteBtn img {
-            width:35px; /* Adjust size if needed */
+            width: 35px;
             height: 35px;
         }
     </style>
@@ -124,27 +114,28 @@
         <div id="timerDisplay"></div>
         <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
-        <buttonRetry id="retryBtn" onclick="resetOutput()">Retry</buttonRetry>
+        <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
     <div>
         <button onclick="createTable(20)">Create 20-Row Table</button>
         <button onclick="createTable(40)">Create 40-Row Table</button>
         <button onclick="resetTable()">Reset Table</button>
     </div>
-    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" width="30" onclick="toggleMute()" style="cursor: pointer;">
+    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; onclick="toggleMute()" style="cursor: pointer;">
 </div>
+
 <div id="mainContent">
     <div id="output"><p>Lets the battle begin!</p></div>
     <div id="tableContainer"></div>
 </div>
 
+<!-- Audio Elements -->
 <audio id="soundG" src="audio/mixkit-car-horn-718.wav"></audio>
 <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
 <audio id="soundB" src="audio/mixkit-impact-of-a-blow-2150.wav"></audio>
 <audio id="soundW" src="audio/mixkit-bonus-collect-award-1937.wav"></audio>
 <audio id="soundY" src="audio/mixkit-fairy-arcade-sparkle-866.wav"></audio>
 <audio id="soundP" src="audio/mixkit-retro-game-notification-212.wav"></audio>
-
 <audio id="soundOff" src="audio/mixkit-service-bell-931.wav"></audio>
 <audio id="soundBackground1" src="audio/final_audio_59_8s.mp3"></audio>
 <audio id="soundBackground2" src="audio/final_audio_1min59_8s.mp3"></audio>
@@ -155,100 +146,81 @@
     let listening = true;
     let timer;
     let countdown;
-    let isMuted = false; // Make isMuted global
+    let isMuted = false;
 
     let clickedTeams = {
-         green: false,
-         blue: false,
-         red: false,
-         white: false,
-         yellow: false,
-         pink: false
-     };
+        green: false,
+        blue: false,
+        red: false,
+        white: false,
+        yellow: false,
+        pink: false
+    };
 
     document.addEventListener('keydown', (event) => {
         if (!listening) return;
 
         const currentTime = new Date().getTime();
         let message = "";
-         let team = "";
+        let team = "";
 
-        if (['g', 'G', 'п', 'П'].includes(event.key)) {
-            team = "green";
-            if (clickedTeams.green) return; // Ignore if already clicked
-            clickedTeams.green = true;
-            message = "<strong style='color:green;'>Green team clicked</strong>";
-            document.getElementById('soundG').play();
-        } else if (['b', 'B', 'и', 'И'].includes(event.key)) {
-             team = "blue";
-             if (clickedTeams.blue) return; // Ignore if already clicked
-             clickedTeams.blue = true;
-             message = "<strong style='color:blue;'>Blue team clicked</strong>";
-             document.getElementById('soundB').play();
-         } else if (['r', 'R', 'к', 'К'].includes(event.key)) {
-             team = "red";
-             if (clickedTeams.red) return; // Ignore if already clicked
-             clickedTeams.red = true;
-             message = "<strong style='color:red;'>Red team clicked</strong>";
-             document.getElementById('soundR').play();
-         } else if (['w', 'W', 'ц', 'Ц'].includes(event.key)) {
-             team = "white";
-             if (clickedTeams.white) return; // Ignore if already clicked
-             clickedTeams.white = true;
-             message = "<strong style='color:#C9C5B1;'>White team clicked</strong>";
-             document.getElementById('soundW').play();
-         } else if (['y', 'Y', 'н', 'Н'].includes(event.key)) {
-             team = "yellow";
-             if (clickedTeams.yellow) return; // Ignore if already clicked
-             clickedTeams.yellow = true;
-             message = "<strong style='color:#FFD32C;'>Yellow team clicked</strong>";
-             document.getElementById('soundY').play();
-         } else if (['p', 'P', 'з', 'З'].includes(event.key)) {
-             team = "pink";
-             if (clickedTeams.pink) return; // Ignore if already clicked
-             clickedTeams.pink = true;
-             message = "<strong style='color:pink;'>Pink team clicked</strong>";
-             document.getElementById('soundP').play();
-         } else {
-             return;
-         }
+        const keyMap = {
+            g: "green", п: "green",
+            b: "blue", и: "blue",
+            r: "red", к: "red",
+            w: "white", ц: "white",
+            y: "yellow", н: "yellow",
+            p: "pink", з: "pink"
+        };
+
+        const pressedKey = event.key.toLowerCase();
+        team = keyMap[pressedKey];
+        if (!team || clickedTeams[team]) return;
+
+        clickedTeams[team] = true;
+        const teamColors = {
+            green: "green",
+            blue: "blue",
+            red: "red",
+            white: "#C9C5B1",
+            yellow: "#FFD32C",
+            pink: "pink"
+        };
+
+        document.getElementById(`sound${team.charAt(0).toUpperCase()}`).play();
+        message = `<strong style='color:${teamColors[team]};'>${team.charAt(0).toUpperCase() + team.slice(1)} team clicked</strong>`;
 
         if (lastClickTime !== 0) {
             const timeDifference = (currentTime - lastClickTime) / 1000;
             const formattedTime = timeDifference.toFixed(2).replace('.', ',');
             clickTimes.push(timeDifference);
-            document.getElementById('output').innerHTML +=
-                `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
+            document.getElementById('output').innerHTML += `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
         } else {
-            document.getElementById('output').innerHTML +=
-                `<p>${message} | First </p>`;
+            document.getElementById('output').innerHTML += `<p>${message} | First </p>`;
         }
 
         lastClickTime = currentTime;
-        saveState(); // Save state after key press
+        saveState();
     });
 
     function saveState() {
-         localStorage.setItem('clickedTeams', JSON.stringify(clickedTeams));
-         localStorage.setItem('outputHTML', document.getElementById('output').innerHTML);
-         localStorage.setItem('lastClickTime', lastClickTime);
-         localStorage.setItem('clickTimes', JSON.stringify(clickTimes));
-         localStorage.setItem('isMuted', isMuted);
-         localStorage.setItem('tableHTML', document.getElementById('tableContainer').innerHTML);
-     }
+        const table = document.querySelector('table');
+        if (!table) return;
+
+        const headers = [...table.querySelectorAll('thead th')].slice(1).map(th => th.textContent);
+        const rows = [...table.querySelectorAll('tbody tr')].slice(0, -1);
+        const data = rows.map(tr => [...tr.querySelectorAll('select')].map(select => select.value));
+        localStorage.setItem('tableState', JSON.stringify({ headers, data }));
+    }
 
     function startTimer(duration) {
         listening = true;
         document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
-
         document.getElementById('timer1Btn').disabled = true;
         document.getElementById('timer2Btn').disabled = true;
 
-        if (duration === 60) {
-            document.getElementById('soundBackground1').play();
-        } else if (duration === 120) {
-            document.getElementById('soundBackground2').play();
-        }
+        if (duration === 60) document.getElementById('soundBackground1').play();
+        else if (duration === 120) document.getElementById('soundBackground2').play();
 
         let timeLeft = duration;
         document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
@@ -256,168 +228,138 @@
         countdown = setInterval(() => {
             timeLeft--;
             document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
-            if (timeLeft <= 0) {
-                clearInterval(countdown);
-            }
+            if (timeLeft <= 0) clearInterval(countdown);
         }, 1000);
-
 
         timer = setTimeout(() => {
             listening = false;
             document.getElementById('output').innerHTML += "<p><strong style='color:red;'>Time's up! Keyboard input stopped.</strong></p>";
             document.getElementById('timerDisplay').innerText = "Time's up!";
             document.getElementById('soundOff').play();
-            saveState(); // Save state after timer ends
+            saveState();
         }, duration * 1000);
     }
 
-     function resetOutput() {
-         document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
-         document.getElementById('timerDisplay').innerText = "";
-         lastClickTime = 0;
-         clickTimes = [];
-         clearTimeout(timer);
-         clearInterval(countdown);
-         listening = true;
-         document.getElementById('timer1Btn').disabled = false;
-         document.getElementById('timer2Btn').disabled = false;
+    function resetOutput() {
+        document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
+        document.getElementById('timerDisplay').innerText = "";
+        lastClickTime = 0;
+        clickTimes = [];
+        clearTimeout(timer);
+        clearInterval(countdown);
+        listening = true;
 
-         clickedTeams.green = false;
-         clickedTeams.blue = false;
-         clickedTeams.red = false;
-         clickedTeams.white = false;
-         clickedTeams.yellow = false;
-         clickedTeams.pink = false;
+        document.getElementById('timer1Btn').disabled = false;
+        document.getElementById('timer2Btn').disabled = false;
 
-          document.querySelectorAll('audio').forEach(audio => {
-                 audio.pause();
-                 audio.currentTime = 0;
-          });
+        for (let key in clickedTeams) clickedTeams[key] = false;
 
-         localStorage.clear(); // Clear saved state on reset
-     }
+        document.querySelectorAll('audio').forEach(audio => {
+            audio.pause();
+            audio.currentTime = 0;
+        });
 
-     function toggleMute() {
-         isMuted = !isMuted; // Toggle mute state
+        localStorage.clear();
+    }
 
-         document.querySelectorAll('audio').forEach(audio => {
-             audio.muted = isMuted; // Mute/unmute all audio
-         });
-
-         // Change button icon based on mute state
-         document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
-         saveState(); // Save state after toggling mute
-     }
+    function toggleMute() {
+        isMuted = !isMuted;
+        document.querySelectorAll('audio').forEach(audio => audio.muted = isMuted);
+        document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
+        saveState();
+    }
 
     function createTable(rows) {
-         const columns = prompt("Enter the number of columns:");
-         if (!columns || isNaN(columns) || columns <= 0) {
-             alert("Invalid number of columns.");
-             return;
-         }
+        const columns = prompt("Enter the number of columns:");
+        if (!columns || isNaN(columns) || columns <= 0) return alert("Invalid number of columns.");
 
-         let tableHTML = "<table><thead><tr><th>#</th>";
-         for (let i = 0; i < columns; i++) {
-             tableHTML += `<th contenteditable="true">Name</th>`;
-         }
-         tableHTML += "</tr></thead><tbody>";
+        let tableHTML = "<table><thead><tr><th>#</th>";
+        for (let i = 0; i < columns; i++) {
+            tableHTML += `<th contenteditable="true" oninput="saveState()">Name</th>`;
+        }
+        tableHTML += "</tr></thead><tbody>";
 
-         for (let i = 1; i <= rows; i++) {
-             tableHTML += `<tr><td>${i}</td>`;
-             for (let j = 0; j < columns; j++) {
-                 tableHTML += `<td><select onchange="updateSum()">
-                     <option value="0">0</option>
-                     <option value="0.5">0.5</option>
-                     <option value="1">1</option>
-                     <option value="1.5">1.5</option>
-                     <option value="2">2</option>
-                     <option value="3">3</option>
-                 </select></td>`;
-             }
-             tableHTML += "</tr>";
-         }
-
-         tableHTML += `<tr class="sumRow"><td>Sum</td>`;
-         for (let i = 0; i < columns; i++) {
-             tableHTML += `<td class="sumCell">0</td>`;
-         }
-         tableHTML += "</tr></tbody></table>";
-
-         document.getElementById('tableContainer').innerHTML = tableHTML;
-         saveState(); // Save state after creating table
-     }
-
-     function updateSum() {
-         const table = document.querySelector('#tableContainer table');
-         const rows = table.rows;
-         const sumRow = rows[rows.length - 1];
-
-         for (let i = 0; i < sumRow.cells.length; i++) {
-             let sum = 0;
-             for (let j = 0; j < rows.length - 1; j++) {
-                 const select = rows[j].cells[i].querySelector('select');
-                 sum += parseFloat(select.value);
-             }
-             sumRow.cells[i].innerText = sum;
-         }
-
-         saveState(); // Save state after updating sum
-     }
-
-     function resetTable() {
-         document.getElementById('tableContainer').innerHTML = "";
-
-
-         saveState(); // Save state after resetting table
-     }
-
-     function updateSum() {
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr:not(.sumRow)");
-    const sumCells = table.querySelectorAll(".sumRow .sumCell");
-    const columnCount = sumCells.length;
-
-    // Reset all sums to 0
-    let sums = new Array(columnCount).fill(0);
-
-    rows.forEach(row => {
-        const selects = row.querySelectorAll("select");
-        selects.forEach((select, index) => {
-            const value = parseFloat(select.value);
-            if (!isNaN(value)) {
-                sums[index] += value;
+        for (let i = 1; i <= rows; i++) {
+            tableHTML += `<tr><td>${i}</td>`;
+            for (let j = 0; j < columns; j++) {
+                tableHTML += `<td><select onchange="updateSum(); saveState();">
+                    <option value="0">0</option>
+                    <option value="0.5">0.5</option>
+                    <option value="1">1</option>
+                    <option value="1.5">1.5</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select></td>`;
             }
+            tableHTML += "</tr>";
+        }
+
+        tableHTML += `<tr class="sumRow"><td>Sum</td>`;
+        for (let i = 0; i < columns; i++) {
+            tableHTML += `<td class="sumCell">0</td>`;
+        }
+        tableHTML += "</tr></tbody></table>";
+
+        document.getElementById('tableContainer').innerHTML = tableHTML;
+        saveState();
+    }
+
+    function updateSum() {
+        const table = document.querySelector("table");
+        const rows = table.querySelectorAll("tbody tr:not(.sumRow)");
+        const sumCells = table.querySelectorAll(".sumRow .sumCell");
+        let sums = new Array(sumCells.length).fill(0);
+
+        rows.forEach(row => {
+            const selects = row.querySelectorAll("select");
+            selects.forEach((select, index) => {
+                const value = parseFloat(select.value);
+                if (!isNaN(value)) sums[index] += value;
+            });
         });
-    });
 
-    // Update the sum row
-    sumCells.forEach((cell, index) => {
-        cell.textContent = sums[index];
-    });
-}
+        sumCells.forEach((cell, index) => cell.textContent = sums[index]);
+    }
 
+    window.onload = function () {
+        const saved = localStorage.getItem('tableState');
+        if (!saved) return;
 
-     window.onload = function() {
-         const savedTeams = localStorage.getItem('clickedTeams');
-         const savedOutput = localStorage.getItem('outputHTML');
-         const savedLastClick = localStorage.getItem('lastClickTime');
-         const savedClickTimes = localStorage.getItem('clickTimes');
-         const savedMute = localStorage.getItem('isMuted');
-         const savedTable = localStorage.getItem('tableHTML');
+        const { headers, data } = JSON.parse(saved);
+        const columns = headers.length;
+        const rows = data.length;
 
-         if (savedTeams) clickedTeams = JSON.parse(savedTeams);
-         if (savedOutput) document.getElementById('output').innerHTML = savedOutput;
-         if (savedLastClick) lastClickTime = parseInt(savedLastClick);
-         if (savedClickTimes) clickTimes = JSON.parse(savedClickTimes);
-         if (savedMute !== null) {
-             isMuted = (savedMute === 'true');
-             document.querySelectorAll('audio').forEach(audio => {
-                 audio.muted = isMuted;
-             });
-             document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
-         }
-         if (savedTable) document.getElementById('tableContainer').innerHTML = savedTable;
-     };
+        let tableHTML = "<table><thead><tr><th>#</th>";
+        for (let i = 0; i < columns; i++) {
+            tableHTML += `<th contenteditable="true" oninput="saveState()">${headers[i]}</th>`;
+        }
+        tableHTML += "</tr></thead><tbody>";
+
+        for (let i = 0; i < rows; i++) {
+            tableHTML += `<tr><td>${i + 1}</td>`;
+            for (let j = 0; j < columns; j++) {
+                const val = data[i][j] || "0";
+                tableHTML += `<td><select onchange="updateSum(); saveState();">
+                    <option value="0" ${val === "0" ? "selected" : ""}>0</option>
+                    <option value="0.5" ${val === "0.5" ? "selected" : ""}>0.5</option>
+                    <option value="1" ${val === "1" ? "selected" : ""}>1</option>
+                    <option value="1.5" ${val === "1.5" ? "selected" : ""}>1.5</option>
+                    <option value="2" ${val === "2" ? "selected" : ""}>2</option>
+                    <option value="3" ${val === "3" ? "selected" : ""}>3</option>
+                </select></td>`;
+            }
+            tableHTML += "</tr>";
+        }
+
+        tableHTML += `<tr class="sumRow"><td>Sum</td>`;
+        for (let i = 0; i < columns; i++) {
+            tableHTML += `<td class="sumCell">0</td>`;
+        }
+        tableHTML += "</tr></tbody></table>";
+
+        document.getElementById('tableContainer').innerHTML = tableHTML;
+        updateSum();
+    };
 </script>
 
 </body>
