@@ -106,6 +106,10 @@
             width: 35px;
             height: 35px;
         }
+
+        .highlighted-row {
+            background-color: #ffe6e6; /* світло-червоний фон */
+         }
     </style>
 </head>
 <body>
@@ -121,7 +125,8 @@
         <button onclick="createTable(40)">Create 40-Row Table</button>
         <button onclick="resetTable()">Reset Table</button>
     </div>
-    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; onclick="toggleMute()" style="cursor: pointer;">
+    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
+
 </div>
 
 <div id="mainContent">
@@ -258,9 +263,15 @@
             audio.pause();
             audio.currentTime = 0;
         });
-
-        localStorage.clear();
     }
+        function resetTable() {
+            const confirmReset = confirm("Are you sure you want to reset the table? You will lose all data.");
+            if (!confirmReset) return;
+
+            document.getElementById('tableContainer').innerHTML = "";
+            localStorage.removeItem('tableState');
+        }
+
 
     function toggleMute() {
         isMuted = !isMuted;
@@ -305,21 +316,36 @@
     }
 
     function updateSum() {
-        const table = document.querySelector("table");
-        const rows = table.querySelectorAll("tbody tr:not(.sumRow)");
-        const sumCells = table.querySelectorAll(".sumRow .sumCell");
-        let sums = new Array(sumCells.length).fill(0);
+            const table = document.querySelector("table");
+            const rows = table.querySelectorAll("tbody tr:not(.sumRow)");
+            const sumCells = table.querySelectorAll(".sumRow .sumCell");
+            let sums = new Array(sumCells.length).fill(0);
 
-        rows.forEach(row => {
-            const selects = row.querySelectorAll("select");
-            selects.forEach((select, index) => {
-                const value = parseFloat(select.value);
-                if (!isNaN(value)) sums[index] += value;
+            rows.forEach(row => {
+                const selects = row.querySelectorAll("select");
+                let hasNonZero = false;
+
+                selects.forEach((select, index) => {
+                    const value = parseFloat(select.value);
+                    if (!isNaN(value)) {
+                        sums[index] += value;
+                        if (value !== 0) {
+                            hasNonZero = true;
+                        }
+                    }
+                });
+
+                // Додаємо або видаляємо клас підсвітки
+                if (hasNonZero) {
+                    row.classList.add("highlighted-row");
+                } else {
+                    row.classList.remove("highlighted-row");
+                }
             });
-        });
 
-        sumCells.forEach((cell, index) => cell.textContent = sums[index]);
-    }
+            sumCells.forEach((cell, index) => cell.textContent = sums[index]);
+        }
+
 
     window.onload = function () {
         const saved = localStorage.getItem('tableState');
