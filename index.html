@@ -42,7 +42,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 48%;
+
             text-align: center;
             overflow-y: auto;
             max-height: 70vh;
@@ -109,7 +109,25 @@
 
         .highlighted-row {
             background-color: #ffe6e6; /* світло-червоний фон */
+        }
+          #leftPanel {
+            display: flex;
+            flex-direction: column;
+            width: 48%;
+            gap: 10px;
          }
+
+    #question, #output {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+        max-height: 34vh;
+        text-align: center;
+        height: 48%;
+    }
+
     </style>
 </head>
 <body>
@@ -130,7 +148,20 @@
 </div>
 
 <div id="mainContent">
-    <div id="output"><p>Lets the battle begin!</p></div>
+    <div id="leftPanel">
+        <div id="output"><p>Lets the battle begin!</p></div>
+        <div id="question">
+            <input type="file" id="csvUpload" accept=".csv">
+            <button onclick="loadCSV()">Load Questions</button>
+            <button onclick="clearCSV()">Clear Questions</button>
+            <div id="questionDisplay" style="margin-top: 10px;">
+                <p><strong>Question Number:</strong> <span id="qNumber">-</span></p>
+                <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
+                <button onclick="prevQuestion()">Previous</button>
+                <button onclick="nextQuestion()">Next</button>
+            </div>
+        </div>
+    </div>
     <div id="tableContainer"></div>
 </div>
 
@@ -385,7 +416,104 @@
 
         document.getElementById('tableContainer').innerHTML = tableHTML;
         updateSum();
+
+        const savedCSV = localStorage.getItem('uploadedCSV');
+            if (savedCSV) {
+                questionsData = savedCSV.split("\n").map(row => row.split(";"));
+                currentQuestionIndex = 0;
+                showQuestion();
+            }
     };
+
+        function handleCSVUpload() {
+                    const fileInput = document.getElementById('csvUpload');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select a CSV file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const csvContent = e.target.result;
+                localStorage.setItem('uploadedCSV', csvContent);
+                alert("CSV file uploaded and saved.");
+                currentRowIndex = 0;
+                parsedCSV = parseCSV(csvContent);
+                displayRow(currentRowIndex);
+            };
+            reader.readAsText(file);
+        }
+
+
+        function getCSVFromLocalStorage() {
+            const csv = localStorage.getItem('uploadedCSV');
+            if (!csv) return [];
+
+            const rows = csv.trim().split("\n");
+            return rows.map(row => row.split(","));
+        }
+
+    //Questions functionality
+
+         let questionsData = [];
+            let currentQuestionIndex = 0;
+
+            function loadCSV() {
+                const fileInput = document.getElementById('csvUpload');
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert("Please select a CSV file first.");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const csvContent = e.target.result.trim();
+                    localStorage.setItem('uploadedCSV', csvContent);
+
+                    questionsData = csvContent.split("\n").map(row => row.split(";"));
+                    currentQuestionIndex = 0;
+                    showQuestion();
+                };
+                reader.readAsText(file);
+            }
+
+            function showQuestion() {
+                if (!questionsData.length) return;
+
+                const row = questionsData[currentQuestionIndex];
+                const qNumber = row[0] || "N/A";
+                const qText = row[1] || "No question";
+
+                document.getElementById('qNumber').textContent = qNumber;
+                document.getElementById('qText').textContent = qText;
+            }
+
+            function nextQuestion() {
+                if (currentQuestionIndex < questionsData.length - 1) {
+                    currentQuestionIndex++;
+                    showQuestion();
+                }
+            }
+
+            function prevQuestion() {
+                if (currentQuestionIndex > 0) {
+                    currentQuestionIndex--;
+                    showQuestion();
+                }
+            }
+
+         function clearCSV() {
+            localStorage.removeItem('uploadedCSV');
+            parsedCSV = [];
+            currentRowIndex = 0;
+            document.getElementById('output').innerHTML = "<p>CSV data cleared.</p>";
+        }
+
+//Question functionality ends
+
 </script>
 
 </body>
