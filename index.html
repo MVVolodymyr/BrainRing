@@ -89,6 +89,13 @@
         .retryBtn {
             background-color: #FA4141;
         }
+         .leftRight {
+              background-color: #838f95;
+              color: white;
+              padding: 4px 8px;
+              border-radius: 4px;
+
+         }
         button:disabled {
             background-color: gray;
             cursor: not-allowed;
@@ -141,7 +148,7 @@
     <div>
         <button onclick="createTable(20)">Create 20-Row Table</button>
         <button onclick="createTable(40)">Create 40-Row Table</button>
-        <button onclick="resetTable()">Reset Table</button>
+        <button class="retryBtn" onclick="resetTable()">Reset Table</button>
     </div>
     <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
 
@@ -153,12 +160,12 @@
         <div id="question">
             <input type="file" id="csvUpload" accept=".csv">
             <button onclick="loadCSV()">Load Questions</button>
-            <button onclick="clearCSV()">Clear Questions</button>
+            <button class="retryBtn" onclick="clearCSV()">Clear Questions</button>
             <div id="questionDisplay" style="margin-top: 10px;">
                 <p><strong>Question Number:</strong> <span id="qNumber">-</span></p>
                 <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
-                <button onclick="prevQuestion()">Previous</button>
-                <button onclick="nextQuestion()">Next</button>
+                <button class="leftRight" onclick="prevQuestion()">Previous</button>
+                <button class="leftRight" onclick="nextQuestion()">Next</button>
             </div>
         </div>
     </div>
@@ -506,6 +513,9 @@
             }
 
          function clearCSV() {
+            const confirmReset = confirm("Click OK if you want to remove questions");
+            if (!confirmReset) return;
+
             localStorage.removeItem('uploadedCSV');
             parsedCSV = [];
             currentRowIndex = 0;
