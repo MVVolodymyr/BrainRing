@@ -96,6 +96,20 @@
               border-radius: 4px;
 
          }
+         .loadQuestion {
+              background-color: #91c400;
+              color: white;
+              padding: 4px 8px;
+              border-radius: 4px;
+         }
+
+         .clearQuestion {
+              background-color: #FA4141;
+              color: white;
+              padding: 4px 8px;
+              border-radius: 4px;
+         }
+
         button:disabled {
             background-color: gray;
             cursor: not-allowed;
@@ -135,6 +149,28 @@
         height: 48%;
     }
 
+        .button-wrapper {
+          position: sticky;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          background: white;
+          display: flex;
+          justify-content: space-around;
+          padding: 5 px;
+          box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+        }
+        .content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 10px;
+        }
+        .container {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          height: 100%; /* or fixed height like 400px */
+        }
     </style>
 </head>
 <body>
@@ -157,15 +193,17 @@
 <div id="mainContent">
     <div id="leftPanel">
         <div id="output"><p>Lets the battle begin!</p></div>
-        <div id="question">
-            <input type="file" id="csvUpload" accept=".csv">
-            <button onclick="loadCSV()">Load Questions</button>
-            <button class="retryBtn" onclick="clearCSV()">Clear Questions</button>
-            <div id="questionDisplay" style="margin-top: 10px;">
+        <div id="question" class="container">
+            <div id="questionDisplay" class="content" style="margin-top: 10px;">
                 <p><strong>Question Number:</strong> <span id="qNumber">-</span></p>
-                <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
-                <button class="leftRight" onclick="prevQuestion()">Previous</button>
-                <button class="leftRight" onclick="nextQuestion()">Next</button>
+                <p><strong>Question:</strong> <span id="qText">No question loaded</span></p
+            </div>
+            <div class="button-wrapper"">
+            <input class="leftRight" type="file" id="csvUpload" accept=".csv">
+            <button class="loadQuestion" onclick="loadCSV()">Load Questions</button>
+            <button class="clearQuestion" onclick="clearCSV()">Clear Questions</button>
+            <button class="leftRight" onclick="prevQuestion()">Previous</button>
+            <button class="leftRight" onclick="nextQuestion()">Next</button>
             </div>
         </div>
     </div>
