@@ -170,6 +170,14 @@
           overflow-y: auto;
           height: 100%; /* or fixed height like 400px */
         }
+        .element {
+          display: none;
+          margin-top: 15px;
+          padding: 15px;
+          background-color: #e0f7fa;
+          border: 1px solid #00796b;
+          border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -191,7 +199,14 @@
 
 <div id="mainContent">
     <div id="leftPanel">
-        <div id="output"><p>Lets the battle begin!</p></div>
+        <div id="output"><p>Lets the battle begin!</p>
+            <div id="element1" class="element">Green</div>
+            <div id="element2" class="element">Red</div>
+            <div id="element3" class="element">Blue</div>
+            <div id="element4" class="element">White</div>
+            <div id="element5" class="element">Yellow</div>
+            <div id="element6" class="element">Pink</div>
+        </div>
         <div id="question" class="container">
             <div id="questionDisplay" class="content" style="margin-top: 10px;">
                 <p><strong>Question Number:</strong> <span id="qNumber">-</span></p>
