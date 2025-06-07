@@ -200,6 +200,8 @@
 <div id="mainContent">
     <div id="leftPanel">
         <div id="output"><p>Lets the battle begin!</p>
+        </div>
+        <div>
             <div id="element1" class="element">Green</div>
             <div id="element2" class="element">Red</div>
             <div id="element3" class="element">Blue</div>
@@ -260,43 +262,43 @@
         let team = "";
 
         const keyMap = {
-            g: "green", п: "green",
-            b: "blue", и: "blue",
-            r: "red", к: "red",
-            w: "white", ц: "white",
-            y: "yellow", н: "yellow",
-            p: "pink", з: "pink"
+            g: { team: "green", elementId: "element1" }, п: { team: "green", elementId: "element1" },
+            b: { team: "blue", elementId: "element3" }, и: { team: "blue", elementId: "element3" },
+            r: { team: "red", elementId: "element2" }, к: { team: "red", elementId: "element2" },
+            w: { team: "white", elementId: "element4" }, ц: { team: "white", elementId: "element4" },
+            y: { team: "yellow", elementId: "element5" }, н: { team: "yellow", elementId: "element5" },
+            p: { team: "pink", elementId: "element6" }, з: { team: "pink", elementId: "element6" }
         };
 
         const pressedKey = event.key.toLowerCase();
-        team = keyMap[pressedKey];
-        if (!team || clickedTeams[team]) return;
+        const mapping = keyMap[pressedKey];
+        if (!mapping || clickedTeams[mapping.team]) return;
 
-        clickedTeams[team] = true;
-        const teamColors = {
-            green: "green",
-            blue: "blue",
-            red: "red",
-            white: "#C9C5B1",
-            yellow: "#FFD32C",
-            pink: "pink"
-        };
+        clickedTeams[mapping.team] = true;
 
-        document.getElementById(`sound${team.charAt(0).toUpperCase()}`).play();
-        message = `<strong style='color:${teamColors[team]};'>${team.charAt(0).toUpperCase() + team.slice(1)} team clicked</strong>`;
+        // Play sound
+        document.getElementById(`sound${mapping.team.charAt(0).toUpperCase()}`).play();
 
+        // Calculate time difference
+        let timeText = "First";
         if (lastClickTime !== 0) {
             const timeDifference = (currentTime - lastClickTime) / 1000;
             const formattedTime = timeDifference.toFixed(2).replace('.', ',');
+            timeText = `+ <strong style='color:red;'>${formattedTime} s</strong>`;
             clickTimes.push(timeDifference);
-            document.getElementById('output').innerHTML += `<p>${message} | + <strong style='color:red;'>${formattedTime} s</strong></p>`;
-        } else {
-            document.getElementById('output').innerHTML += `<p>${message} | First </p>`;
         }
 
         lastClickTime = currentTime;
-        saveState();
+
+        // Show corresponding hidden element as a new block in order
+        const element = document.getElementById(mapping.elementId);
+        const cloned = element.cloneNode(true);
+        cloned.style.display = 'block';
+        cloned.innerHTML = `<strong style="color:${mapping.team};">${mapping.team.charAt(0).toUpperCase() + mapping.team.slice(1)} team clicked</strong> | ${timeText}`;
+        cloned.classList.add('element');
+        document.getElementById('output').appendChild(cloned);
     });
+
 
     function saveState() {
         const table = document.querySelector('table');
@@ -353,7 +355,16 @@
             audio.pause();
             audio.currentTime = 0;
         });
+
+        // Показати приховані елементи, якщо потрібно
+        document.getElementById('gameContainer').style.display = 'block';
+        document.getElementById('questionContainer').style.display = 'block';
+        document.getElementById('scoreTable').style.display = 'block';
+
+        // Сховати кнопку "Retry" після натискання, якщо треба
+        document.getElementById('retryBtn').style.display = 'none';
     }
+
         function resetTable() {
             const confirmReset = confirm("Are you sure you want to reset the table? You will lose all data.");
             if (!confirmReset) return;
