@@ -247,6 +247,56 @@
       display: block;
     }
 
+          .circle-button {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: background-color 0.3s;
+    }
+
+    .circle-button:hover {
+      background-color: #45a049;
+    }
+    .button-group {
+        display: flex;
+        justify-content: flex-end; /* кнопки праворуч */
+        gap: 10px;                 /* відстань між кнопками */
+        margin-top: 10px;
+    }
+    .selector {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 10px;
+      background: #f1f1f1;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .selector button {
+      padding: 2px 6px;
+      font-size: 1em;
+      border-radius: 4px;
+      background: #ddd;
+      border: none;
+      cursor: pointer;
+    }
+
+    .selector button:hover {
+      background: #ccc;
+    }
+
+
     </style>
 </head>
 <body>
@@ -257,6 +307,19 @@
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
+    <div id="questionSelector" class="selector">
+        <label>Question:</label>
+        <button onclick="changeQuestion(-1)">◀</button>
+        <span id="questionValue">1</span>
+        <button onclick="changeQuestion(1)">▶</button>
+    </div>
+    <div id="roundSelector" class="selector">
+        <label>Round:</label>
+        <button onclick="changeRound(-1)">◀</button>
+        <span id="roundValue">2</span>
+        <button onclick="changeRound(1)">▶</button>
+    </div>
+
     <button class="retryBtn" onclick="retrySession()">Retry Session</button>
     <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
 
@@ -267,12 +330,36 @@
         <div id="output"><p>Lets the battle begin!</p>
         </div>
         <div>
-            <div id="element1" class="element">Green</div>
-            <div id="element2" class="element">Red</div>
-            <div id="element3" class="element">Blue</div>
-            <div id="element4" class="element">White</div>
-            <div id="element5" class="element">Yellow</div>
-            <div id="element6" class="element">Pink</div>
+            <div id="element1" class="element">Green
+                <button class="circle-button" id="addGreen1">+1</button>
+                <button class="circle-button" id="addGreen2">+2</button>
+                <button class="circle-button" id="addGreen3">+3</button>
+            </div>
+            <div id="element2" class="element">Red
+                <button class="circle-button" id="addRed1">+1</button>
+                <button class="circle-button" id="addRed2">+2</button>
+                <button class="circle-button" id="addRed3">+3</button>
+            </div>
+            <div id="element3" class="element">Blue
+                <button class="circle-button" id="addBlue1">+1</button>
+                <button class="circle-button" id="addBlue2">+2</button>
+                <button class="circle-button" id="addBlue3">+3</button>
+            </div>
+            <div id="element4" class="element">White
+                <button class="circle-button" id="addWhite1">+1</button>
+                <button class="circle-button" id="addWhite2">+2</button>
+                <button class="circle-button" id="addWhite3">+3</button>
+            </div>
+            <div id="element5" class="element">Yellow
+                <button class="circle-button" id="addYellow1">+1</button>
+                <button class="circle-button" id="addYellow2">+2</button>
+                <button class="circle-button" id="addYellow3">+3</button>
+            </div>
+            <div id="element6" class="element">Pink
+                <button class="circle-button" id="addPink1">+1</button>
+                <button class="circle-button" id="addPink2">+2</button>
+                <button class="circle-button" id="addPink3">+3</button>
+            </div>
         </div>
         <div id="question" class="container">
             <div id="questionDisplay" class="content" style="margin-top: 10px;">
@@ -292,27 +379,27 @@
         <div class="total" id="teamTotal">
             <div>
                 <span class="team-name">Red Team</span>
-                <span class="team-points" id="points-red">120</span>
+                <span class="team-points" id="points-red"></span>
             </div>
             <div >
                 <span class="team-name">Green team</span>
-                <span class="team-points" id="points-green">120</span>
+                <span class="team-points" id="points-green"></span>
             </div>
             <div >
                 <span class="team-name">Blue team</span>
-                <span class="team-points" id="points-blue">120</span>
+                <span class="team-points" id="points-blue"></span>
             </div>
             <div >
                 <span class="team-name">White team</span>
-                <span class="team-points" id="points-white">120</span>
+                <span class="team-points" id="points-white"></span>
             </div>
             <div>
                 <span class="team-name">Yellow team</span>
-                <span class="team-points" id="points-yellow">120</span>
+                <span class="team-points" id="points-yellow"></span>
             </div>
             <div>
                 <span class="team-name">Pink Team</span>
-                <span class="team-points" id="points-pink">120</span>
+                <span class="team-points" id="points-pink"></span>
             </div>
         </div>
         <div class="tabs">
@@ -459,7 +546,34 @@
         const element = document.getElementById(mapping.elementId);
         const cloned = element.cloneNode(true);
         cloned.style.display = 'block';
-        cloned.innerHTML = `<strong style="color:${mapping.team};">${mapping.team.charAt(0).toUpperCase() + mapping.team.slice(1)} team clicked</strong> | ${timeText}`;
+
+        const title = document.createElement('div');
+        title.innerHTML = `<strong style="color:${mapping.team};">${mapping.team.charAt(0).toUpperCase() + mapping.team.slice(1)} team clicked</strong> | ${timeText}`;
+
+        cloned.innerHTML = '';
+        cloned.appendChild(title);
+        const buttonGroup = document.createElement('div');
+            buttonGroup.className = 'button-group';
+
+            ['+1', '+2', '+3'].forEach((label, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'circle-button';
+                btn.textContent = label;
+
+                btn.addEventListener('click', () => {
+                    const teamId = `points-${mapping.team}`;
+                    const el = document.getElementById(teamId);
+                    if (el) {
+                        const current = parseFloat(el.textContent) || 0;
+                        el.textContent = (current + (index + 1)).toFixed(1);
+                    }
+                });
+
+                buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
+            });
+
+            cloned.appendChild(buttonGroup); // ✅ Потім додаємо групу у cloned
+
         cloned.classList.add('element');
         document.getElementById('output').appendChild(cloned);
     });
@@ -839,6 +953,22 @@
                 if (el) el.textContent = totals[i].toFixed(1);
             });
         }
+
+            let round = 2;
+            let question = 1;
+
+            function changeRound(delta) {
+                round = Math.min(4, Math.max(2, round + delta));
+                document.getElementById('roundValue').textContent = round;
+                // Додай сюди дію, яка відбувається при зміні раунду
+            }
+
+            function changeQuestion(delta) {
+                question = Math.min(40, Math.max(1, question + delta));
+                document.getElementById('questionValue').textContent = question;
+                // Додай сюди дію, яка відбувається при зміні питання
+            }
+
 
 </script>
 
