@@ -257,6 +257,7 @@
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
+    <button class="retryBtn" onclick="retrySession()">Retry Session</button>
     <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
 
 </div>
@@ -564,7 +565,10 @@
                     input.min = Math.min(...allowedValues);
                     input.max = Math.max(...allowedValues);
                     input.setAttribute("data-col", j);
-                    input.addEventListener("input", () => updateColumnSums(tableId));
+                    input.addEventListener("input", () => {
+                    updateColumnSums(tableId);
+                    saveTableState(tableId);
+                    });
                     row.appendChild(document.createElement("td")).appendChild(input);
                 }
                 tbody.appendChild(row);
@@ -584,6 +588,21 @@
             tbody.appendChild(sumRow);
             table.appendChild(tbody);
         }
+
+        function saveTableState(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const inputs = table.querySelectorAll("input[data-col]");
+            const data = [];
+
+          inputs.forEach(input => {
+                data.push(input.value);
+            });
+
+            localStorage.setItem(`tableData-${tableId}`, JSON.stringify(data));
+        }
+
 
         function updateColumnSums(tableId) {
             const table = document.getElementById(tableId);
@@ -607,9 +626,13 @@
         // Ініціалізація після завантаження сторінки
         window.addEventListener("DOMContentLoaded", () => {
             buildInputTable("tableYesNo", 1, Array.from({length: 101}, (_, i) => i));       // довільні числа
+            loadTableState("tableYesNo");
             buildInputTable("tableSimple", 40, [1, 2]);                                      // тільки 1 або 2
+            loadTableState("tableSimple");
             buildInputTable("tableHard", 20, [1, 2, 3]);                                     // 1, 2, 3
+            loadTableState("tableHard");
             buildInputTable("tableCap", 15, Array.from({length: 11}, (_, i) => i - 5));
+            loadTableState("tableCap");
 
             const savedCSV = localStorage.getItem('uploadedCSV');
             if (savedCSV) {
@@ -618,6 +641,22 @@
                 showQuestion();
             }
         });
+
+        function loadTableState(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const data = JSON.parse(localStorage.getItem(`tableData-${tableId}`));
+            if (!data) return;
+
+            const inputs = table.querySelectorAll("input[data-col]");
+            inputs.forEach((input, index) => {
+                input.value = data[index] || "";
+            });
+
+            updateColumnSums(tableId); // ⬅️ оновлює суми після відновлення
+        }
+
 
         function handleCSVUpload() {
                     const fileInput = document.getElementById('csvUpload');
@@ -700,13 +739,18 @@
             }
 
          function clearCSV() {
-            const confirmReset = confirm("Click OK if you want to remove questions");
+            const confirmReset = confirm("Click OK if you want to remove all loaded questions.");
             if (!confirmReset) return;
 
             localStorage.removeItem('uploadedCSV');
-            parsedCSV = [];
-            currentRowIndex = 0;
-            document.getElementById('output').innerHTML = "<p>CSV data cleared.</p>";
+            questionsData = [];
+            currentQuestionIndex = 0;
+
+            // Очистити питання з UI
+            document.getElementById('qNumber').textContent = "-";
+            document.getElementById('qText').textContent = "No question loaded";
+
+            document.getElementById('output').innerHTML = "<p>Questions cleared. You can load a new CSV file.</p>";
         }
 
 //Question functionality ends
@@ -728,6 +772,31 @@
     });
 
 //Скрипт для табі закінчився
+
+    function retrySession() {
+        const confirmClear = confirm("Are you sure you want to clear all table data and start a new session?");
+        if (!confirmClear) return;
+
+        const tableIds = ["tableYesNo", "tableSimple", "tableHard", "tableCap"];
+
+        tableIds.forEach(tableId => {
+            // Видаляємо з localStorage
+          localStorage.removeItem(`tableData-${tableId}`);
+
+            // Очищаємо значення в таблиці
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const inputs = table.querySelectorAll("input[data-col]");
+            inputs.forEach(input => {
+                input.value = "";
+            });
+
+            updateColumnSums(tableId); // оновити суму після очищення
+        });
+
+        alert("All table data cleared. You can start a new session.");
+    }
 </script>
 
 </body>
