@@ -158,6 +158,37 @@
           padding: 10px;
           text-align: center;
          }
+         .total {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 20px;
+            background-color: #f7f7f7;
+         }
+         .total > div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
+            font-family: sans-serif;
+         }
+
+        .team-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .team-points {
+            font-size: 20px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
         .content {
           flex: 1;
           overflow-y: auto;
@@ -178,6 +209,44 @@
           border: 1px solid #00796b;
           border-radius: 6px;
         }
+     //для роботи з табами
+        .tabs {
+      display: flex;
+      flex-direction: row;
+      border-bottom: 2px solid #ccc;
+      margin-bottom: 10px;
+    }
+
+    .tab {
+      display: inline-block; /* або просто не вказуйте display:block */
+      padding: 10px 20px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      background-color: #f1f1f1;
+      margin-right: 5px;
+    }
+
+    .tab.active {
+      background-color: white;
+      font-weight: bold;
+      border-top: 2px solid #007bff;
+      border-right: 2px solid #007bff;
+      border-left: 2px solid #007bff;
+      color: #007bff;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 20px;
+      border: 2px solid #ccc;
+      background-color: #fff;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
     </style>
 </head>
 <body>
@@ -187,11 +256,6 @@
         <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
-    </div>
-    <div>
-        <button onclick="createTable(20)">Create 20-Row Table</button>
-        <button onclick="createTable(40)">Create 40-Row Table</button>
-        <button class="retryBtn" onclick="resetTable()">Reset Table</button>
     </div>
     <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
 
@@ -223,7 +287,107 @@
             </div>
         </div>
     </div>
-    <div id="tableContainer"></div>
+    <div id="tableContainer">
+        <div class="total" id="teamTotal">
+            <div>
+                <span class="team-name">Red Team</span>
+                <span class="team-points">120</span>
+            </div>
+            <div >
+                <span class="team-name">Green team</span>
+                <span class="team-points">120</span>
+            </div>
+            <div >
+                <span class="team-name">Blue team</span>
+                <span class="team-points">120</span>
+            </div>
+            <div >
+                <span class="team-name">White team</span>
+                <span class="team-points">120</span>
+            </div>
+            <div>
+                <span class="team-name">Yellow team</span>
+                <span class="team-points">120</span>
+            </div>
+            <div>
+                <span class="team-name">Pink Team</span>
+                <span class="team-points">120</span>
+            </div>
+        </div>
+        <div class="tabs">
+            <div class="tab active" data-tab="tab1">Yes / No round</div>
+            <div class="tab" data-tab="tab2">Simple questions round</div>
+            <div class="tab" data-tab="tab3">Hard question round</div>
+            <div class="tab" data-tab="tab4">Captains round</div>
+        </div>
+
+        <div class="tab-content active" id="tab1">
+            <h2>Yes/No</h2>
+            <table id="tableYesNo">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Red</th>
+                    <th>Green</th>
+                    <th>Blue</th>
+                    <th>White</th>
+                    <th>Yellow</th>
+                    <th>Pink</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div class="tab-content" id="tab2">
+            <h2>Simple questions</h2>
+            <table id="tableSimple">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Red</th>
+                    <th>Green</th>
+                    <th>Blue</th>
+                    <th>White</th>
+                    <th>Yellow</th>
+                    <th>Pink</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div class="tab-content" id="tab3">
+            <h2>Hard Questions</h2>
+            <table id="tableHard">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Red</th>
+                    <th>Green</th>
+                    <th>Blue</th>
+                    <th>White</th>
+                    <th>Yellow</th>
+                    <th>Pink</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="tab-content" id="tab4">
+            <h2>Captain's round</h2>
+            <table id="tableCap">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Red</th>
+                    <th>Green</th>
+                    <th>Blue</th>
+                    <th>White</th>
+                    <th>Yellow</th>
+                    <th>Pink</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Audio Elements -->
@@ -380,120 +544,80 @@
         document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
         saveState();
     }
+        function buildInputTable(tableId, rowCount, allowedValues) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
 
-    function createTable(rows) {
-        const columns = prompt("Enter the number of columns:");
-        if (!columns || isNaN(columns) || columns <= 0) return alert("Invalid number of columns.");
+            const headerRow = table.querySelector("thead tr");
+            const teamCount = headerRow.children.length - 1; // exclude '#'
 
-        let tableHTML = "<table><thead><tr><th>#</th>";
-        for (let i = 0; i < columns; i++) {
-            tableHTML += `<th contenteditable="true" oninput="saveState()">Name</th>`;
-        }
-        tableHTML += "</tr></thead><tbody>";
+            const tbody = document.createElement("tbody");
 
-        for (let i = 1; i <= rows; i++) {
-            tableHTML += `<tr><td>${i}</td>`;
-            for (let j = 0; j < columns; j++) {
-                tableHTML += `<td><select onchange="updateSum(); saveState();">
-                    <option value="0">0</option>
-                    <option value="0.5">0.5</option>
-                    <option value="1">1</option>
-                    <option value="1.5">1.5</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select></td>`;
+            // Створити основні рядки
+            for (let i = 1; i <= rowCount; i++) {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${i}</td>`;
+                for (let j = 0; j < teamCount; j++) {
+                    const input = document.createElement("input");
+                    input.type = "number";
+                    input.step = "0.5";
+                    input.min = Math.min(...allowedValues);
+                    input.max = Math.max(...allowedValues);
+                    input.setAttribute("data-col", j);
+                    input.addEventListener("input", () => updateColumnSums(tableId));
+                    row.appendChild(document.createElement("td")).appendChild(input);
+                }
+                tbody.appendChild(row);
             }
-            tableHTML += "</tr>";
+
+            // Додати рядок для сум
+            const sumRow = document.createElement("tr");
+            sumRow.className = "sumRow";
+            sumRow.innerHTML = "<td><strong>Сума</strong></td>";
+            for (let i = 0; i < teamCount; i++) {
+                const cell = document.createElement("td");
+                cell.className = "sumCell";
+                cell.innerText = "0";
+                sumRow.appendChild(cell);
+            }
+
+            tbody.appendChild(sumRow);
+            table.appendChild(tbody);
         }
 
-        tableHTML += `<tr class="sumRow"><td>Sum</td>`;
-        for (let i = 0; i < columns; i++) {
-            tableHTML += `<td class="sumCell">0</td>`;
-        }
-        tableHTML += "</tr></tbody></table>";
+        function updateColumnSums(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
 
-        document.getElementById('tableContainer').innerHTML = tableHTML;
-        saveState();
-    }
-
-    function updateSum() {
-            const table = document.querySelector("table");
-            const rows = table.querySelectorAll("tbody tr:not(.sumRow)");
+            const inputs = table.querySelectorAll("input[data-col]");
             const sumCells = table.querySelectorAll(".sumRow .sumCell");
-            let sums = new Array(sumCells.length).fill(0);
 
-            rows.forEach(row => {
-                const selects = row.querySelectorAll("select");
-                let hasNonZero = false;
-
-                selects.forEach((select, index) => {
-                    const value = parseFloat(select.value);
-                    if (!isNaN(value)) {
-                        sums[index] += value;
-                        if (value !== 0) {
-                            hasNonZero = true;
-                        }
-                    }
-                });
-
-                // Додаємо або видаляємо клас підсвітки
-                if (hasNonZero) {
-                    row.classList.add("highlighted-row");
-                } else {
-                    row.classList.remove("highlighted-row");
+            const colSums = Array.from(sumCells).map(() => 0);
+            inputs.forEach(input => {
+                const col = parseInt(input.getAttribute("data-col"));
+                const val = parseFloat(input.value);
+                if (!isNaN(val)) {
+                    colSums[col] += val;
                 }
             });
 
-            sumCells.forEach((cell, index) => cell.textContent = sums[index]);
+            sumCells.forEach((cell, i) => cell.textContent = colSums[i]);
         }
 
+        // Ініціалізація після завантаження сторінки
+        window.addEventListener("DOMContentLoaded", () => {
+            buildInputTable("tableYesNo", 1, Array.from({length: 101}, (_, i) => i));       // довільні числа
+            buildInputTable("tableSimple", 40, [1, 2]);                                      // тільки 1 або 2
+            buildInputTable("tableHard", 20, [1, 2, 3]);                                     // 1, 2, 3
+            buildInputTable("tableCap", 15, Array.from({length: 11}, (_, i) => i - 5));
 
-    window.onload = function () {
-        const saved = localStorage.getItem('tableState');
-        if (!saved) return;
-
-        const { headers, data } = JSON.parse(saved);
-        const columns = headers.length;
-        const rows = data.length;
-
-        let tableHTML = "<table><thead><tr><th>#</th>";
-        for (let i = 0; i < columns; i++) {
-            tableHTML += `<th contenteditable="true" oninput="saveState()">${headers[i]}</th>`;
-        }
-        tableHTML += "</tr></thead><tbody>";
-
-        for (let i = 0; i < rows; i++) {
-            tableHTML += `<tr><td>${i + 1}</td>`;
-            for (let j = 0; j < columns; j++) {
-                const val = data[i][j] || "0";
-                tableHTML += `<td><select onchange="updateSum(); saveState();">
-                    <option value="0" ${val === "0" ? "selected" : ""}>0</option>
-                    <option value="0.5" ${val === "0.5" ? "selected" : ""}>0.5</option>
-                    <option value="1" ${val === "1" ? "selected" : ""}>1</option>
-                    <option value="1.5" ${val === "1.5" ? "selected" : ""}>1.5</option>
-                    <option value="2" ${val === "2" ? "selected" : ""}>2</option>
-                    <option value="3" ${val === "3" ? "selected" : ""}>3</option>
-                </select></td>`;
-            }
-            tableHTML += "</tr>";
-        }
-
-        tableHTML += `<tr class="sumRow"><td>Sum</td>`;
-        for (let i = 0; i < columns; i++) {
-            tableHTML += `<td class="sumCell">0</td>`;
-        }
-        tableHTML += "</tr></tbody></table>";
-
-        document.getElementById('tableContainer').innerHTML = tableHTML;
-        updateSum();
-
-        const savedCSV = localStorage.getItem('uploadedCSV');
+            const savedCSV = localStorage.getItem('uploadedCSV');
             if (savedCSV) {
                 questionsData = savedCSV.split("\n").map(row => row.split(";"));
                 currentQuestionIndex = 0;
                 showQuestion();
             }
-    };
+        });
 
         function handleCSVUpload() {
                     const fileInput = document.getElementById('csvUpload');
@@ -587,6 +711,23 @@
 
 //Question functionality ends
 
+//Скрипт для табів
+     const tabs = document.querySelectorAll('.tab');
+    const contents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Знімаємо клас активності з усіх табів і контенту
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+
+        // Додаємо активний клас до натиснутої вкладки та відповідного контенту
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+//Скрипт для табі закінчився
 </script>
 
 </body>
