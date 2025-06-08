@@ -741,6 +741,18 @@
 
         // Ініціалізація після завантаження сторінки
         window.addEventListener("DOMContentLoaded", () => {
+            const savedRound = localStorage.getItem('roundValue');
+            const savedQuestion = localStorage.getItem('questionValue');
+
+            if (savedRound) {
+                round = parseInt(savedRound);
+                document.getElementById('roundValue').textContent = round;
+            }
+
+            if (savedQuestion) {
+                question = parseInt(savedQuestion);
+                document.getElementById('questionValue').textContent = question;
+            }
             buildInputTable("tableYesNo", 1, Array.from({length: 101}, (_, i) => i));       // довільні числа
             loadTableState("tableYesNo");
             buildInputTable("tableSimple", 40, [1, 2]);                                      // тільки 1 або 2
@@ -911,6 +923,12 @@
 
             updateColumnSums(tableId); // оновити суму після очищення
             });
+            localStorage.removeItem('roundValue');
+            localStorage.removeItem('questionValue');
+            round = 2;
+            question = 1;
+            document.getElementById('roundValue').textContent = round;
+            document.getElementById('questionValue').textContent = question;
 
             alert("All table data cleared. You can start a new session.");
         }
@@ -960,12 +978,18 @@
             function changeRound(delta) {
                 round = Math.min(4, Math.max(2, round + delta));
                 document.getElementById('roundValue').textContent = round;
+                localStorage.setItem('roundValue', round);
                 // Додай сюди дію, яка відбувається при зміні раунду
+
+                question = 1;
+                document.getElementById('questionValue').textContent = question;
+                localStorage.setItem('questionValue', question);
             }
 
             function changeQuestion(delta) {
                 question = Math.min(40, Math.max(1, question + delta));
                 document.getElementById('questionValue').textContent = question;
+                localStorage.setItem('questionValue', question);
                 // Додай сюди дію, яка відбувається при зміні питання
             }
 
