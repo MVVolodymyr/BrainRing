@@ -561,13 +561,37 @@
                 btn.textContent = label;
 
                 btn.addEventListener('click', () => {
-                    const teamId = `points-${mapping.team}`;
-                    const el = document.getElementById(teamId);
-                    if (el) {
-                        const current = parseFloat(el.textContent) || 0;
-                        el.textContent = (current + (index + 1)).toFixed(1);
-                    }
+                    const roundValue = parseInt(document.getElementById('roundValue').textContent);
+                    const questionValue = parseInt(document.getElementById('questionValue').textContent);
+
+                    let tableId = '';
+                    if (roundValue === 2) tableId = 'tableSimple';
+                    else if (roundValue === 3) tableId = 'tableHard';
+                    else if (roundValue === 4) tableId = 'tableCap';
+                    else return; // якщо round не підтримується — нічого не робимо
+
+                    const table = document.getElementById(tableId);
+                    if (!table) return;
+
+                    const rowIndex = questionValue - 1; // бо індексація з 0
+                    const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
+                    const colIndex = teamOrder.indexOf(mapping.team);
+                    if (colIndex === -1) return;
+
+                    const tbody = table.querySelector('tbody');
+                    const rows = tbody.querySelectorAll('tr');
+                    const sumRowIndex = rows.length - 1;
+                    if (rowIndex >= sumRowIndex) return;
+
+                    const targetRow = rows[rowIndex];
+                    const input = targetRow.querySelectorAll('input')[colIndex];
+                    if (!input) return;
+
+                    const current = parseFloat(input.value) || 0;
+                    input.value = current + (index + 1);
+                    input.dispatchEvent(new Event('input')); // тригер оновлення суми
                 });
+
 
                 buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
             });
@@ -691,7 +715,7 @@
             // Додати рядок для сум
             const sumRow = document.createElement("tr");
             sumRow.className = "sumRow";
-            sumRow.innerHTML = "<td><strong>Сума</strong></td>";
+            sumRow.innerHTML = "<td><strong>Sum</strong></td>";
             for (let i = 0; i < teamCount; i++) {
                 const cell = document.createElement("td");
                 cell.className = "sumCell";
@@ -991,6 +1015,7 @@
                 document.getElementById('questionValue').textContent = question;
                 localStorage.setItem('questionValue', question);
                 // Додай сюди дію, яка відбувається при зміні питання
+                resetOutput();
             }
 
 
