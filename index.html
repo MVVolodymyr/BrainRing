@@ -292,27 +292,27 @@
         <div class="total" id="teamTotal">
             <div>
                 <span class="team-name">Red Team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-red">120</span>
             </div>
             <div >
                 <span class="team-name">Green team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-green">120</span>
             </div>
             <div >
                 <span class="team-name">Blue team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-blue">120</span>
             </div>
             <div >
                 <span class="team-name">White team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-white">120</span>
             </div>
             <div>
                 <span class="team-name">Yellow team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-yellow">120</span>
             </div>
             <div>
                 <span class="team-name">Pink Team</span>
-                <span class="team-points">120</span>
+                <span class="team-points" id="points-pink">120</span>
             </div>
         </div>
         <div class="tabs">
@@ -621,6 +621,8 @@
             });
 
             sumCells.forEach((cell, i) => cell.textContent = colSums[i]);
+            updateTeamTotalsFromTable(tableId);
+            updateTotalTeamPoints();
         }
 
         // Ініціалізація після завантаження сторінки
@@ -640,6 +642,7 @@
                 currentQuestionIndex = 0;
                 showQuestion();
             }
+            updateTotalTeamPoints();
         });
 
         function loadTableState(tableId) {
@@ -793,10 +796,50 @@
             });
 
             updateColumnSums(tableId); // оновити суму після очищення
-        });
+            });
 
-        alert("All table data cleared. You can start a new session.");
-    }
+            alert("All table data cleared. You can start a new session.");
+        }
+        function updateTeamTotalsFromTable(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const sumCells = table.querySelectorAll(".sumRow .sumCell");
+            const teamIds = ["red", "green", "blue", "white", "yellow", "pink"];
+
+            sumCells.forEach((cell, index) => {
+                const value = cell.textContent.trim();
+                const pointsElement = document.getElementById(`points-${teamIds[index]}`);
+                if (pointsElement) {
+                    pointsElement.textContent = value;
+                }
+            });
+        }
+        function updateTotalTeamPoints() {
+            const tableIds = ["tableYesNo", "tableSimple", "tableHard", "tableCap"];
+            const teamIds = ["red", "green", "blue", "white", "yellow", "pink"];
+            const totals = Array(teamIds.length).fill(0); // створюємо масив з 6 нулями
+
+            tableIds.forEach(tableId => {
+                const table = document.getElementById(tableId);
+                if (!table) return;
+
+                const sumCells = table.querySelectorAll(".sumRow .sumCell");
+                sumCells.forEach((cell, i) => {
+                    const value = parseFloat(cell.textContent);
+                    if (!isNaN(value)) {
+                        totals[i] += value;
+                    }
+                });
+            });
+
+            // Оновити текстові значення у відповідних блоках
+            teamIds.forEach((team, i) => {
+                const el = document.getElementById(`points-${team}`);
+                if (el) el.textContent = totals[i].toFixed(1);
+            });
+        }
+
 </script>
 
 </body>
