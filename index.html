@@ -485,9 +485,8 @@
 <audio id="soundW" src="audio/mixkit-bonus-collect-award-1937.wav"></audio>
 <audio id="soundY" src="audio/mixkit-fairy-arcade-sparkle-866.wav"></audio>
 <audio id="soundP" src="audio/mixkit-retro-game-notification-212.wav"></audio>
-<audio id="soundOff" src="audio/mixkit-service-bell-931.wav"></audio>
-<audio id="soundBackground1" src="audio/final_audio_59_8s.mp3"></audio>
-<audio id="soundBackground2" src="audio/final_audio_1min59_8s.mp3"></audio>
+<audio id="soundOff" src="audio/mixkit-sad-game-over-trombone).mp3"></audio>
+<audio id="soundBackground1" src="audio/last10secondAudio.mp3"></audio>
 
 <script>
     let lastClickTime = 0;
@@ -619,8 +618,15 @@
         document.getElementById('timer1Btn').disabled = true;
         document.getElementById('timer2Btn').disabled = true;
 
-        if (duration === 60) document.getElementById('soundBackground1').play();
-        else if (duration === 120) document.getElementById('soundBackground2').play();
+         if (duration === 60) {
+        setTimeout(() => {
+            document.getElementById('soundBackground1').play();
+        }, 50000); // 50 секунд = 50000 мс
+    } else if (duration === 120) {
+            setTimeout(() => {
+                document.getElementById('soundBackground1').play();
+            }, 110000); // 110 секунд
+        }
 
         let timeLeft = duration;
         document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
