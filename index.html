@@ -123,10 +123,7 @@
             padding: 0;
             cursor: pointer;
         }
-        #muteBtn img {
-            width: 35px;
-            height: 35px;
-        }
+
 
         .highlighted-row {
             background-color: #ffe6e6; /* світло-червоний фон */
@@ -421,8 +418,8 @@ input[type="number"] {
 </head>
 <body>
 <div id="topControls">
-    <div>
-        <div id="timerDisplay"></div>
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div id="timerDisplay" style="min-width: 100px; color: #d9534f; font-weight: bold;"></div>
         <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min Timer</button>
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min Timer</button>
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
@@ -441,7 +438,7 @@ input[type="number"] {
     </div>
 
     <button class="retryBtn" onclick="retrySession()">Retry Session</button>
-    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 35px; height: 35px; cursor: pointer;" onclick="toggleMute()">
+    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 25px; height: 25px; cursor: pointer;" onclick="toggleMute()">
 
 </div>
 
@@ -615,6 +612,7 @@ input[type="number"] {
     let timer;
     let countdown;
     let isMuted = false;
+    let warningTimeout;
 
     let clickedTeams = {
         green: false,
@@ -742,19 +740,24 @@ input[type="number"] {
     }
 
     function startTimer(duration) {
+        clearTimeout(warningTimeout);
+        const bgAudio = document.getElementById('soundBackground1');
+        bgAudio.pause();
+        bgAudio.currentTime = 0;
         listening = true;
         document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
         document.getElementById('timer1Btn').disabled = true;
         document.getElementById('timer2Btn').disabled = true;
 
          if (duration === 60) {
-        setTimeout(() => {
+            warningTimeout = setTimeout(() => {
             document.getElementById('soundBackground1').play();
-        }, 50000); // 50 секунд = 50000 мс
+        }, 50000);
+
     } else if (duration === 120) {
-            setTimeout(() => {
-                document.getElementById('soundBackground1').play();
-            }, 110000); // 110 секунд
+                warningTimeout = setTimeout(() => {
+                    document.getElementById('soundBackground1').play();
+                }, 110000);
         }
 
         let timeLeft = duration;
@@ -780,8 +783,12 @@ input[type="number"] {
         document.getElementById('timerDisplay').innerText = "";
         lastClickTime = 0;
         clickTimes = [];
+
+        // Скидаємо всі таймери
         clearTimeout(timer);
         clearInterval(countdown);
+        clearTimeout(warningTimeout);
+
         listening = true;
 
         document.getElementById('timer1Btn').disabled = false;
@@ -789,19 +796,25 @@ input[type="number"] {
 
         for (let key in clickedTeams) clickedTeams[key] = false;
 
+        // Зупиняємо всі звуки
         document.querySelectorAll('audio').forEach(audio => {
             audio.pause();
             audio.currentTime = 0;
         });
 
-        // Показати приховані елементи, якщо потрібно
-        document.getElementById('gameContainer').style.display = 'block';
-        document.getElementById('questionContainer').style.display = 'block';
-        document.getElementById('scoreTable').style.display = 'block';
+        // Показати приховані елементи (якщо вони існують)
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) gameContainer.style.display = 'block';
+        const questionContainer = document.getElementById('questionContainer');
+        if (questionContainer) questionContainer.style.display = 'block';
+        const scoreTable = document.getElementById('scoreTable');
+        if (scoreTable) scoreTable.style.display = 'block';
 
-        // Сховати кнопку "Retry" після натискання, якщо треба
-        document.getElementById('retryBtn').style.display = 'none';
+        // Сховати Retry, якщо він існує
+        const retryBtn = document.getElementById('retryBtn');
+        if (retryBtn) retryBtn.style.display = 'none';
     }
+
 
         function resetTable() {
             const confirmReset = confirm("Are you sure you want to reset the table? You will lose all data.");
@@ -841,6 +854,14 @@ input[type="number"] {
                     input.addEventListener("input", () => {
                     updateColumnSums(tableId);
                     saveTableState(tableId);
+
+                    if (tableId === "tableSimple") {
+                        applyConditionalFormattingSimple();
+                    } else if (tableId === "tableHard") {
+                        applyConditionalFormattingHard();
+                    } else if (tableId === "tableCap") {
+                        applyConditionalFormattingCap();
+                    }
                     });
                     row.appendChild(document.createElement("td")).appendChild(input);
                 }
@@ -1056,6 +1077,16 @@ input[type="number"] {
         // Додаємо активний клас до натиснутої вкладки та відповідного контенту
         tab.classList.add('active');
         document.getElementById(tab.dataset.tab).classList.add('active');
+
+         if (tab.dataset.tab === "tab1") {
+              applyConditionalFormattingYesNo?.();
+            } else if (tab.dataset.tab === "tab2") {
+              applyConditionalFormattingSimple?.();
+            } else if (tab.dataset.tab === "tab3") {
+              applyConditionalFormattingHard?.();
+            } else if (tab.dataset.tab === "tab4") {
+              applyConditionalFormattingCap?.();
+            }
       });
     });
 
@@ -1088,7 +1119,10 @@ input[type="number"] {
             question = 1;
             document.getElementById('roundValue').textContent = round;
             document.getElementById('questionValue').textContent = question;
-
+            clearTimeout(warningTimeout);
+            const bgAudio = document.getElementById('soundBackground1');
+            bgAudio.pause();
+            bgAudio.currentTime = 0;
             alert("All table data cleared. You can start a new session.");
         }
         function updateTeamTotalsFromTable(tableId) {
@@ -1159,6 +1193,113 @@ input[type="number"] {
                 resetOutput();
 
             }
+
+        function applyConditionalFormattingSimple() {
+            const table = document.getElementById('tableSimple');
+            if (!table) return;
+
+            const rows = table.querySelectorAll('tbody tr:not(.sumRow)');
+
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                let filledValues = 0;
+                let hasTooLarge = false;
+
+                inputs.forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        filledValues++;
+                        if (val > 2) hasTooLarge = true;
+                    }
+                });
+
+                // умовне забарвлення
+                if (filledValues === 1 && !hasTooLarge) {
+                    row.style.backgroundColor = '#d4edda'; // світло-зелений
+                } else if (filledValues > 1 || hasTooLarge) {
+                    row.style.backgroundColor = '#f8d7da'; // світло-червоний
+                } else {
+                    row.style.backgroundColor = ''; // скидання
+                }
+            });
+        }
+
+        function applyConditionalFormattingHard() {
+            const table = document.getElementById('tableHard');
+            if (!table) return;
+
+            const rows = table.querySelectorAll('tbody tr:not(.sumRow)');
+
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                let filledValues = 0;
+                let hasTooLarge = false;
+
+                inputs.forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        filledValues++;
+                        if (val > 3) hasTooLarge = true;
+                    }
+                });
+
+                if (filledValues === 1 && !hasTooLarge) {
+                    row.style.backgroundColor = '#d4edda'; // світло-зелений
+                } else if (filledValues > 1 || hasTooLarge) {
+                    row.style.backgroundColor = '#f8d7da'; // світло-червоний
+                } else {
+                    row.style.backgroundColor = ''; // скинути стиль
+                }
+            });
+        }
+
+        function applyConditionalFormattingCap() {
+    const table = document.getElementById('tableCap');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr:not(.sumRow)');
+
+    rows.forEach(row => {
+        const rowNumberCell = row.querySelector('td');
+        const rowNumber = parseInt(rowNumberCell?.textContent);
+
+        // 🟡 Пропускаємо перший логічний рядок (#1)
+        if (rowNumber === 1) {
+            row.style.backgroundColor = '';
+            return;
+        }
+
+        const inputs = row.querySelectorAll('input');
+        let filledCount = 0;
+        let hasNotOne = false;
+
+        inputs.forEach(input => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val)) {
+                filledCount++;
+                if (val !== 1) {
+                    hasNotOne = true;
+                }
+            }
+        });
+
+        if (filledCount === 1 && !hasNotOne) {
+            row.style.backgroundColor = '#d4edda'; // ✅ зелений
+        } else if (filledCount > 1 || hasNotOne) {
+            row.style.backgroundColor = '#f8d7da'; // ❌ червоний
+        } else {
+            row.style.backgroundColor = ''; // 🔄 скидання
+        }
+    });
+}
+
+
+
+
+
+
+
+
 
 
 </script>
