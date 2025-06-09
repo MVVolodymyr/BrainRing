@@ -1008,6 +1008,7 @@
                 question = 1;
                 document.getElementById('questionValue').textContent = question;
                 localStorage.setItem('questionValue', question);
+                resetOutput();
             }
 
             function changeQuestion(delta) {
