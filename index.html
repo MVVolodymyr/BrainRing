@@ -304,6 +304,119 @@
     }
 
 
+
+/* Для планшетів у портретному режимі (наприклад, iPad Air 13) */
+@media only screen and (max-width: 1024px) {
+    #mainContent {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    #leftPanel, #tableContainer {
+        width: 100%;
+    }
+
+    .total {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .button-wrapper {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    #topControls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .selector {
+        margin: 5px 0;
+        justify-content: center;
+    }
+
+    button {
+        font-size: 0.9em;
+        padding: 8px 12px;
+    }
+}
+
+html {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    html {
+        font-size: 12px;
+    }
+}
+
+table {
+    width: 100%;
+    font-size: 0.95em;
+}
+
+input[type="number"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+/* === Покращення стилю topControls === */
+#topControls {
+    flex-wrap: wrap;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #e0e3f3;
+}
+
+/* Менші кнопки у селекторах та retry */
+#topControls .selector,
+#topControls button.retryBtn,
+#topControls button,
+#topControls img {
+    font-size: 0.85em;
+    padding: 4px 8px;
+    margin: 0;
+}
+
+#topControls img {
+    width: 28px;
+    height: 28px;
+}
+
+/* Для малих екранів */
+@media only screen and (max-width: 1024px) {
+    #topControls {
+        flex-direction: row;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 10px;
+    }
+
+    #topControls .selector,
+    #topControls button.retryBtn,
+    #topControls button {
+        font-size: 0.8em;
+        padding: 3px 6px;
+    }
+
+    #topControls img {
+        width: 24px;
+        height: 24px;
+    }
+}
+
     </style>
 </head>
 <body>
@@ -374,11 +487,11 @@
                 <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
             </div>
             <div class="button-wrapper">
-            <input class="leftRight" type="file" id="csvUpload" accept=".csv">
-            <button class="loadQuestion" onclick="loadCSV()">Load Questions</button>
-            <button class="clearQuestion" onclick="clearCSV()">Clear Questions</button>
-            <button class="leftRight" onclick="prevQuestion()">Previous</button>
-            <button class="leftRight" onclick="nextQuestion()">Next</button>
+                <input class="leftRight" type="file" id="csvUpload" accept=".csv">
+                <button class="loadQuestion" onclick="loadCSV()">Load Questions</button>
+                <button class="clearQuestion" onclick="clearCSV()">Clear Questions</button>
+                <button class="leftRight" onclick="prevQuestion()">Previous</button>
+                <button class="leftRight" onclick="nextQuestion()">Next</button>
             </div>
         </div>
     </div>
