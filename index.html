@@ -557,7 +557,15 @@
         title.innerHTML = `<strong style="color:${mapping.team};">${mapping.team.charAt(0).toUpperCase() + mapping.team.slice(1)} team clicked</strong> | ${timeText}`;
 
         cloned.innerHTML = '';
-        cloned.appendChild(title);
+        const inlineWrap = document.createElement('div');
+        inlineWrap.style.display = 'flex';
+        inlineWrap.style.alignItems = 'center';
+        inlineWrap.style.justifyContent = 'space-between';
+        inlineWrap.style.flexWrap = 'wrap';
+        inlineWrap.style.gap = '10px';
+
+        inlineWrap.appendChild(title);
+
         const buttonGroup = document.createElement('div');
             buttonGroup.className = 'button-group';
 
@@ -602,7 +610,8 @@
                 buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
             });
 
-            cloned.appendChild(buttonGroup); // ✅ Потім додаємо групу у cloned
+            inlineWrap.appendChild(buttonGroup);
+            cloned.appendChild(inlineWrap);
 
         cloned.classList.add('element');
         document.getElementById('output').appendChild(cloned);
@@ -1029,7 +1038,13 @@
                 document.getElementById('questionValue').textContent = question;
                 localStorage.setItem('questionValue', question);
                 // Додай сюди дію, яка відбувається при зміні питання
+                if (delta === 1) {
+                  nextQuestion();
+                } else if (delta === -1) {
+                  prevQuestion();
+                }
                 resetOutput();
+
             }
 
 
