@@ -133,6 +133,7 @@
             flex-direction: column;
             width: 48%;
             gap: 10px;
+            height: auto;
          }
 
         #question, #output {
@@ -303,7 +304,7 @@
 
 
 /* Для планшетів у портретному режимі (наприклад, iPad Air 13) */
-@media only screen and (max-width: 1024px) {
+    @media only screen and (max-width: 1024px) {
     #mainContent {
         flex-direction: column;
         padding: 10px;
@@ -413,6 +414,58 @@ input[type="number"] {
         height: 24px;
     }
 }
+
+
+    @media only screen and (max-width: 1024px) {
+    #leftPanel {
+        height: auto;
+        gap: 10px;
+    }
+
+    #output {
+        height: 25vh !important;
+        max-height: 25vh !important;
+        overflow-y: auto;
+    }
+    #question {
+        height: 20vh !important;
+        max-height: 25vh !important;
+        overflow-y: auto;
+    }
+
+    #questionDisplay {
+        max-height: 180px;
+        font-size: 0.9em;
+    }
+
+    .button-wrapper {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+    }
+    @media only screen and (max-width: 1024px) {
+        #question {
+            margin-bottom: 10px;
+        }
+
+        #mainContent {
+            padding-bottom: 10px;
+        }
+    }
+        @media only screen and (max-width: 1024px) {
+            .element {
+                max-height: 80px;
+                overflow: hidden;
+            }
+        }
+
+        @media only screen and (max-width: 1024px) {
+            #mainContent {
+                padding: 10px 10px 5px 10px; /* зменшує нижній padding */
+                gap: 10px; /* додає контрольовану відстань між блоками */
+            }
+        }
 
     </style>
 </head>
@@ -1292,15 +1345,6 @@ input[type="number"] {
         }
     });
 }
-
-
-
-
-
-
-
-
-
 
 </script>
 
