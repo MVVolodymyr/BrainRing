@@ -466,6 +466,32 @@ input[type="number"] {
                 gap: 10px; /* додає контрольовану відстань між блоками */
             }
         }
+        /* Сховати колонку команди у таблицях */
+            body.hide-red table th:nth-child(2),
+            body.hide-red table td:nth-child(2),
+            body.hide-green table th:nth-child(3),
+            body.hide-green table td:nth-child(3),
+            body.hide-blue table th:nth-child(4),
+            body.hide-blue table td:nth-child(4),
+            body.hide-white table th:nth-child(5),
+            body.hide-white table td:nth-child(5),
+            body.hide-yellow table th:nth-child(6),
+            body.hide-yellow table td:nth-child(6),
+            body.hide-pink table th:nth-child(7),
+            body.hide-pink table td:nth-child(7) {
+                display: none !important;
+            }
+
+            /* Сховати блок команди у #teamTotal */
+            body.hide-red #teamTotal > div:nth-child(1),
+            body.hide-green #teamTotal > div:nth-child(2),
+            body.hide-blue #teamTotal > div:nth-child(3),
+            body.hide-white #teamTotal > div:nth-child(4),
+            body.hide-yellow #teamTotal > div:nth-child(5),
+            body.hide-pink #teamTotal > div:nth-child(6) {
+                display: none !important;
+            }
+
 
     </style>
 </head>
@@ -491,7 +517,21 @@ input[type="number"] {
     </div>
 
     <button class="retryBtn" onclick="retrySession()">Retry Session</button>
-    <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 25px; height: 25px; cursor: pointer;" onclick="toggleMute()">
+    <div style="position: relative;">
+        <img id="muteIcon" src="icon/mute_17879746.png" alt="Mute" style="width: 25px; height: 25px; cursor: pointer;" onclick="toggleMute()">
+        <img id="settingsIcon" src="https://cdn-icons-png.flaticon.com/512/2099/2099058.png" alt="Settings"
+             style="width: 25px; height: 25px; cursor: pointer; margin-left: 10px;" onclick="toggleSettingsMenu()">
+
+        <div id="settingsMenu" style="display: none; position: absolute; top: 30px; right: 0; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); padding: 10px; z-index: 1000;">
+            <label><input type="checkbox" data-team="red" checked> Red</label><br>
+            <label><input type="checkbox" data-team="green" checked> Green</label><br>
+            <label><input type="checkbox" data-team="blue" checked> Blue</label><br>
+            <label><input type="checkbox" data-team="white" checked> White</label><br>
+            <label><input type="checkbox" data-team="yellow" checked> Yellow</label><br>
+            <label><input type="checkbox" data-team="pink" checked> Pink</label>
+        </div>
+    </div>
+
 
 </div>
 
@@ -1345,8 +1385,51 @@ input[type="number"] {
         }
     });
 }
+    function toggleSettingsMenu() {
+            const menu = document.getElementById('settingsMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
 
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // === СТАРТ: Відновлення стану чекбоксів для видимості команд ===
+                const checkboxes = document.querySelectorAll('#settingsMenu input[type="checkbox"]');
+
+                // Відновлюємо збережений стан
+                const savedState = JSON.parse(localStorage.getItem('teamVisibility')) || {};
+                checkboxes.forEach(cb => {
+                    const team = cb.dataset.team;
+                    const isVisible = savedState[team] !== false; // за замовчуванням true
+                    cb.checked = isVisible;
+                    document.body.classList.toggle('hide-' + team, !isVisible);
+                });
+
+                // Відстежуємо зміни
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const team = cb.dataset.team;
+                        const isVisible = cb.checked;
+                        document.body.classList.toggle('hide-' + team, !isVisible);
+
+                        // Зберегти оновлений стан
+                        const updatedState = {};
+                        checkboxes.forEach(c => {
+                            updatedState[c.dataset.team] = c.checked;
+                        });
+                        localStorage.setItem('teamVisibility', JSON.stringify(updatedState));
+                    });
+                });
+                // === КІНЕЦЬ: Відновлення стану чекбоксів ===
+
+        });
+    document.addEventListener('click', function (e) {
+        const menu = document.getElementById('settingsMenu');
+        const settingsIcon = document.getElementById('settingsIcon');
+
+        if (!menu.contains(e.target) && e.target !== settingsIcon) {
+            menu.style.display = 'none';
+        }
+    });
 </script>
-
 </body>
 </html>
