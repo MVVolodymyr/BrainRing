@@ -1370,6 +1370,9 @@ input[type="number"] {
             const bgAudio = document.getElementById('soundBackground1');
             bgAudio.pause();
             bgAudio.currentTime = 0;
+            teamIds.forEach(team => {
+              localStorage.removeItem(`teamName-${team}`);
+            });
             alert("All table data cleared. You can start a new session.");
         }
         function updateTeamTotalsFromTable(tableId) {
