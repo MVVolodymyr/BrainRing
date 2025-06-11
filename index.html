@@ -557,6 +557,7 @@ input[type="number"] {
         <div id="timerDisplay" style="min-width: 100px; color: #d9534f; font-weight: bold;"></div>
         <button id="timer1Btn" onclick="startTimer(60)">Start 1-Min</button>
         <button id="timer2Btn" onclick="startTimer(120)">Start 2-Min</button>
+        <button id="timer3Btn" onclick="startTimer(180)">Start 3-Min</button>
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
     <div id="questionSelector" class="selector">
@@ -898,16 +899,21 @@ input[type="number"] {
         document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
         document.getElementById('timer1Btn').disabled = true;
         document.getElementById('timer2Btn').disabled = true;
+        document.getElementById('timer3Btn').disabled = true;
 
          if (duration === 60) {
             warningTimeout = setTimeout(() => {
             document.getElementById('soundBackground1').play();
         }, 50000);
 
-    } else if (duration === 120) {
+        } else if (duration === 120) {
                 warningTimeout = setTimeout(() => {
                     document.getElementById('soundBackground1').play();
                 }, 110000);
+        }  else if (duration === 180) {
+                warningTimeout = setTimeout(() => {
+                    document.getElementById('soundBackground1').play();
+                }, 170000);
         }
 
         let timeLeft = duration;
@@ -943,6 +949,8 @@ input[type="number"] {
 
         document.getElementById('timer1Btn').disabled = false;
         document.getElementById('timer2Btn').disabled = false;
+        document.getElementById('timer3Btn').disabled = false;
+
 
         for (let key in clickedTeams) clickedTeams[key] = false;
 
