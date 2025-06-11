@@ -169,7 +169,7 @@
 
         .button-wrapper {
           background: white;
-          padding: 10px;
+          padding:1px;
           text-align: center;
          }
          .total {
@@ -344,6 +344,7 @@
     }
 
     .button-wrapper {
+
         flex-wrap: wrap;
         justify-content: center;
     }
@@ -466,7 +467,6 @@ input[type="number"] {
     .button-wrapper {
         flex-wrap: wrap;
         justify-content: center;
-        gap: 8px;
     }
     }
     @media only screen and (max-width: 1024px) {
@@ -524,8 +524,30 @@ input[type="number"] {
                  overflow-y: auto;
             }
 
+             .btn {
+                padding: 10px 20px;
+                font-size: 1em;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: filter 0.3s;
+            }
 
+            .btn-small {
+                padding: 4px 10px;
+                font-size: 0.85em;
+            }
 
+            .btn-green { background-color: #91c400; color: white; }
+            .btn-red   { background-color: #FA4141; color: white; }
+            .btn-gray  { background-color: #838f95; color: white; }
+
+            .btn:hover {
+                filter: brightness(0.9);
+            }
+            #question {
+                padding-bottom: 0;
+            }
 
     </style>
 </head>
@@ -611,11 +633,12 @@ input[type="number"] {
                 <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
             </div>
             <div class="button-wrapper">
-                <input class="leftRight" type="file" id="csvUpload" accept=".csv">
-                <button class="loadQuestion" onclick="loadCSV()">Load Questions</button>
-                <button class="clearQuestion" onclick="clearCSV()">Clear Questions</button>
-                <button class="leftRight" onclick="prevQuestion()">Previous</button>
-                <button class="leftRight" onclick="nextQuestion()">Next</button>
+                <input type="file" id="csvUpload" accept=".csv" hidden>
+                <label for="csvUpload" class="btn btn-gray btn-small">Upload CSV</label>
+                <button class="btn btn-green btn-small" onclick="loadCSV()">Load Questions</button>
+                <button class="btn btn-red btn-small" onclick="clearCSV()">Clear Questions</button>
+                <button class="btn btn-gray btn-small" onclick="prevQuestion()">Previous</button>
+                <button class="btn btn-gray btn-small" onclick="nextQuestion()">Next</button>
             </div>
         </div>
     </div>
