@@ -45,7 +45,7 @@
 
             text-align: center;
             overflow-y: auto;
-            max-height: 70vh;
+            max-height: 65vh;
         }
 
         #teamTotal {
@@ -646,8 +646,12 @@ input[type="number"] {
                 <label for="csvUpload" class="btn btn-gray btn-small">Upload CSV</label>
                 <button class="btn btn-green btn-small" onclick="loadCSV()">Load Questions</button>
                 <button class="btn btn-red btn-small" onclick="clearCSV()">Clear Questions</button>
-                <button class="btn btn-gray btn-small" onclick="prevQuestion()">Previous</button>
-                <button class="btn btn-gray btn-small" onclick="nextQuestion()">Next</button>
+                <button class="btn btn-gray btn-small" onclick="prevQuestion()">
+                    <img src="icon/angle-left.svg" alt="Previous" width="20" height=15">
+                </button>
+                <button class="btn btn-gray btn-small" onclick="nextQuestion()">
+                    <img src="icon/angle-right.svg" alt="Next" width="20" height="15">
+                </button>
             </div>
         </div>
     </div>
