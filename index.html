@@ -366,9 +366,9 @@
     }
 }
 
-html {
-    font-size: 16px;
-}
+    html {
+        font-size: 16px;
+    }
 
 @media (max-width: 768px) {
     html {
@@ -561,16 +561,24 @@ input[type="number"] {
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
     <div id="questionSelector" class="selector">
-        <label>Question:</label>
-        <button onclick="changeQuestion(-1)">◀</button>
-        <span id="questionValue">1</span>
-        <button onclick="changeQuestion(1)">▶</button>
+        <label style="font-size: 25px" >Question:</label>
+        <button onclick="changeQuestion(-1)">
+            <img src="icon/angle-left.svg" alt="Previous" width="20" height="20">
+        </button>
+        <span style="font-size: 35px" id="questionValue">1</span>
+        <button onclick="changeQuestion(1)">
+            <img src="icon/angle-right.svg" alt="Next" width="20" height="20">
+        </button>
     </div>
     <div id="roundSelector" class="selector">
-        <label>Round:</label>
-        <button onclick="changeRound(-1)">◀</button>
-        <span id="roundValue">2</span>
-        <button onclick="changeRound(1)">▶</button>
+        <label style="font-size: 25px" >Round:</label>
+        <button  onclick="changeRound(-1)">
+            <img src="icon/angle-left.svg" alt="Previous" width="20" height="20">
+        </button>
+        <span style="font-size: 35px" id="roundValue">2</span>
+        <button onclick="changeRound(1)">
+            <img src="icon/angle-right.svg" alt="Next" width="20" height="20">
+        </button>
     </div>
 
     <button class="retryBtn" onclick="retrySession()">Retry Session</button>
@@ -828,150 +836,150 @@ input[type="number"] {
 
         inlineWrap.appendChild(title);
 
-        const buttonGroup = document.createElement('div');
-            buttonGroup.className = 'button-group';
+            const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'button-group';
 
-            ['+1', '+2', '+3'].forEach((label, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'circle-button';
-                btn.textContent = label;
+                     ['+1', '+2', '+3'].forEach((label, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'circle-button';
+                    btn.textContent = label;
 
-                btn.addEventListener('click', () => {
-                    const roundValue = parseInt(document.getElementById('roundValue').textContent);
-                    const questionValue = parseInt(document.getElementById('questionValue').textContent);
+                    btn.addEventListener('click', () => {
+                        const roundValue = parseInt(document.getElementById('roundValue').textContent);
+                        const questionValue = parseInt(document.getElementById('questionValue').textContent);
 
-                    let tableId = '';
-                    if (roundValue === 2) tableId = 'tableSimple';
-                    else if (roundValue === 3) tableId = 'tableHard';
-                    else if (roundValue === 4) tableId = 'tableCap';
-                    else return; // якщо round не підтримується — нічого не робимо
+                        let tableId = '';
+                        if (roundValue === 2) tableId = 'tableSimple';
+                        else if (roundValue === 3) tableId = 'tableHard';
+                        else if (roundValue === 4) tableId = 'tableCap';
+                        else return; // якщо round не підтримується — нічого не робимо
 
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
+                        const table = document.getElementById(tableId);
+                        if (!table) return;
 
-                    const rowIndex = questionValue - 1; // бо індексація з 0
-                    const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
-                    const colIndex = teamOrder.indexOf(mapping.team);
-                    if (colIndex === -1) return;
+                        const rowIndex = questionValue - 1; // бо індексація з 0
+                        const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
+                        const colIndex = teamOrder.indexOf(mapping.team);
+                        if (colIndex === -1) return;
 
-                    const tbody = table.querySelector('tbody');
-                    const rows = tbody.querySelectorAll('tr');
-                    const sumRowIndex = rows.length - 1;
-                    if (rowIndex >= sumRowIndex) return;
+                        const tbody = table.querySelector('tbody');
+                        const rows = tbody.querySelectorAll('tr');
+                        const sumRowIndex = rows.length - 1;
+                        if (rowIndex >= sumRowIndex) return;
 
-                    const targetRow = rows[rowIndex];
-                    const input = targetRow.querySelectorAll('input')[colIndex];
-                    if (!input) return;
+                        const targetRow = rows[rowIndex];
+                        const input = targetRow.querySelectorAll('input')[colIndex];
+                        if (!input) return;
 
-                    const current = parseFloat(input.value) || 0;
-                    input.value = current + (index + 1);
-                    input.dispatchEvent(new Event('input')); // тригер оновлення суми
+                        const current = parseFloat(input.value) || 0;
+                        input.value = current + (index + 1);
+                        input.dispatchEvent(new Event('input')); // тригер оновлення суми
+                    });
+
+
+                    buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
                 });
 
+                inlineWrap.appendChild(buttonGroup);
+                cloned.appendChild(inlineWrap);
 
-                buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
-            });
-
-            inlineWrap.appendChild(buttonGroup);
-            cloned.appendChild(inlineWrap);
-
-        cloned.classList.add('element');
-        document.getElementById('output').appendChild(cloned);
-    });
-
-
-    function saveState() {
-        const table = document.querySelector('table');
-        if (!table) return;
-
-        const headers = [...table.querySelectorAll('thead th')].slice(1).map(th => th.textContent);
-        const rows = [...table.querySelectorAll('tbody tr')].slice(0, -1);
-        const data = rows.map(tr => [...tr.querySelectorAll('select')].map(select => select.value));
-        localStorage.setItem('tableState', JSON.stringify({ headers, data }));
-    }
-
-    function startTimer(duration) {
-        clearTimeout(warningTimeout);
-        const bgAudio = document.getElementById('soundBackground1');
-        bgAudio.pause();
-        bgAudio.currentTime = 0;
-        listening = true;
-        document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
-        document.getElementById('timer1Btn').disabled = true;
-        document.getElementById('timer2Btn').disabled = true;
-        document.getElementById('timer3Btn').disabled = true;
-
-         if (duration === 60) {
-            warningTimeout = setTimeout(() => {
-            document.getElementById('soundBackground1').play();
-        }, 50000);
-
-        } else if (duration === 120) {
-                warningTimeout = setTimeout(() => {
-                    document.getElementById('soundBackground1').play();
-                }, 110000);
-        }  else if (duration === 180) {
-                warningTimeout = setTimeout(() => {
-                    document.getElementById('soundBackground1').play();
-                }, 170000);
-        }
-
-        let timeLeft = duration;
-        document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
-
-        countdown = setInterval(() => {
-            timeLeft--;
-            document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
-            if (timeLeft <= 0) clearInterval(countdown);
-        }, 1000);
-
-        timer = setTimeout(() => {
-            listening = false;
-            document.getElementById('output').innerHTML += "<p><strong style='color:red;'>Time's up! Keyboard input stopped.</strong></p>";
-            document.getElementById('timerDisplay').innerText = "Time's up!";
-            document.getElementById('soundOff').play();
-            saveState();
-        }, duration * 1000);
-    }
-
-    function resetOutput() {
-        document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
-        document.getElementById('timerDisplay').innerText = "";
-        lastClickTime = 0;
-        clickTimes = [];
-
-        // Скидаємо всі таймери
-        clearTimeout(timer);
-        clearInterval(countdown);
-        clearTimeout(warningTimeout);
-
-        listening = true;
-
-        document.getElementById('timer1Btn').disabled = false;
-        document.getElementById('timer2Btn').disabled = false;
-        document.getElementById('timer3Btn').disabled = false;
-
-
-        for (let key in clickedTeams) clickedTeams[key] = false;
-
-        // Зупиняємо всі звуки
-        document.querySelectorAll('audio').forEach(audio => {
-            audio.pause();
-            audio.currentTime = 0;
+            cloned.classList.add('element');
+            document.getElementById('output').appendChild(cloned);
         });
 
-        // Показати приховані елементи (якщо вони існують)
-        const gameContainer = document.getElementById('gameContainer');
-        if (gameContainer) gameContainer.style.display = 'block';
-        const questionContainer = document.getElementById('questionContainer');
-        if (questionContainer) questionContainer.style.display = 'block';
-        const scoreTable = document.getElementById('scoreTable');
-        if (scoreTable) scoreTable.style.display = 'block';
 
-        // Сховати Retry, якщо він існує
-        const retryBtn = document.getElementById('retryBtn');
-        if (retryBtn) retryBtn.style.display = 'none';
-    }
+        function saveState() {
+            const table = document.querySelector('table');
+            if (!table) return;
+
+            const headers = [...table.querySelectorAll('thead th')].slice(1).map(th => th.textContent);
+            const rows = [...table.querySelectorAll('tbody tr')].slice(0, -1);
+            const data = rows.map(tr => [...tr.querySelectorAll('select')].map(select => select.value));
+            localStorage.setItem('tableState', JSON.stringify({ headers, data }));
+        }
+
+        function startTimer(duration) {
+            clearTimeout(warningTimeout);
+            const bgAudio = document.getElementById('soundBackground1');
+            bgAudio.pause();
+            bgAudio.currentTime = 0;
+            listening = true;
+            document.getElementById('output').innerHTML += `<p><strong style='color:green;'>Timer started for ${duration / 60} minutes! Press keys now.</strong></p>`;
+            document.getElementById('timer1Btn').disabled = true;
+            document.getElementById('timer2Btn').disabled = true;
+            document.getElementById('timer3Btn').disabled = true;
+
+            if (duration === 60) {
+                warningTimeout = setTimeout(() => {
+                document.getElementById('soundBackground1').play();
+            }, 50000);
+
+            } else if (duration === 120) {
+                    warningTimeout = setTimeout(() => {
+                        document.getElementById('soundBackground1').play();
+                    }, 110000);
+            }  else if (duration === 180) {
+                    warningTimeout = setTimeout(() => {
+                        document.getElementById('soundBackground1').play();
+                    }, 170000);
+            }
+
+            let timeLeft = duration;
+            document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
+
+            countdown = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timerDisplay').innerText = `Time Left: ${timeLeft}s`;
+                if (timeLeft <= 0) clearInterval(countdown);
+            }, 1000);
+
+            timer = setTimeout(() => {
+                listening = false;
+                document.getElementById('output').innerHTML += "<p><strong style='color:red;'>Time's up! Keyboard input stopped.</strong></p>";
+                document.getElementById('timerDisplay').innerText = "Time's up!";
+                document.getElementById('soundOff').play();
+                saveState();
+            }, duration * 1000);
+        }
+
+        function resetOutput() {
+            document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
+            document.getElementById('timerDisplay').innerText = "";
+            lastClickTime = 0;
+            clickTimes = [];
+
+            // Скидаємо всі таймери
+            clearTimeout(timer);
+            clearInterval(countdown);
+            clearTimeout(warningTimeout);
+
+            listening = true;
+
+            document.getElementById('timer1Btn').disabled = false;
+            document.getElementById('timer2Btn').disabled = false;
+            document.getElementById('timer3Btn').disabled = false;
+
+
+            for (let key in clickedTeams) clickedTeams[key] = false;
+
+            // Зупиняємо всі звуки
+            document.querySelectorAll('audio').forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+
+            // Показати приховані елементи (якщо вони існують)
+            const gameContainer = document.getElementById('gameContainer');
+            if (gameContainer) gameContainer.style.display = 'block';
+            const questionContainer = document.getElementById('questionContainer');
+            if (questionContainer) questionContainer.style.display = 'block';
+            const scoreTable = document.getElementById('scoreTable');
+            if (scoreTable) scoreTable.style.display = 'block';
+
+            // Сховати Retry, якщо він існує
+            const retryBtn = document.getElementById('retryBtn');
+            if (retryBtn) retryBtn.style.display = 'none';
+        }
 
 
         function resetTable() {
@@ -983,12 +991,12 @@ input[type="number"] {
         }
 
 
-    function toggleMute() {
-        isMuted = !isMuted;
-        document.querySelectorAll('audio').forEach(audio => audio.muted = isMuted);
-        document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
-        saveState();
-    }
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.querySelectorAll('audio').forEach(audio => audio.muted = isMuted);
+            document.getElementById('muteIcon').src = isMuted ? "icon/muted_3541927.png" : "icon/mute_17879746.png";
+            saveState();
+        }
         function buildInputTable(tableId, rowCount, allowedValues) {
             const table = document.getElementById(tableId);
             if (!table) return;
@@ -1487,14 +1495,15 @@ input[type="number"] {
                 // === КІНЕЦЬ: Відновлення стану чекбоксів ===
 
         });
-    document.addEventListener('click', function (e) {
-        const menu = document.getElementById('settingsMenu');
-        const settingsIcon = document.getElementById('settingsIcon');
 
-        if (!menu.contains(e.target) && e.target !== settingsIcon) {
-            menu.style.display = 'none';
-        }
-    });
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('settingsMenu');
+            const settingsIcon = document.getElementById('settingsIcon');
+
+            if (!menu.contains(e.target) && e.target !== settingsIcon) {
+                menu.style.display = 'none';
+            }
+        });
 </script>
 </body>
 </html>
