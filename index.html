@@ -45,7 +45,7 @@
 
             text-align: center;
             overflow-y: auto;
-            max-height: 65vh;
+            max-height:65vh;
         }
 
         #teamTotal {
@@ -366,9 +366,9 @@
     }
 }
 
-    html {
-        font-size: 16px;
-    }
+html {
+    font-size: 16px;
+}
 
 @media (max-width: 768px) {
     html {
@@ -549,6 +549,104 @@ input[type="number"] {
                 padding-bottom: 0;
             }
 
+        .team-setting {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-bottom: 5px;
+        }
+        .edit-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 1em;
+        }
+        .edit-btn:hover {
+          color: #007BFF;
+        }
+        #settingsMenu {
+          display: none;
+          position: absolute;
+          top: 35px;
+          right: 10px;
+          min-width: 220px;
+          background: #ffffff;
+          border: 1px solid #d1d5db;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          padding: 15px 12px;
+          z-index: 1000;
+          font-family: sans-serif;
+          font-size: 14px;
+        }
+
+        #settingsMenu .team-setting {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 6px 0;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        #settingsMenu .team-setting:last-child {
+          border-bottom: none;
+        }
+
+        #settingsMenu .team-label {
+          flex-grow: 1;
+          margin-left: 8px;
+          font-weight: 500;
+          color: #333;
+        }
+
+        #settingsMenu .edit-btn {
+          background: none;
+          border: none;
+          font-size: 1em;
+          cursor: pointer;
+          color: #555;
+          transition: color 0.2s ease;
+        }
+
+        #settingsMenu .edit-btn:hover {
+          color: #007BFF;
+        }
+        .question-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+
+        .question-meta > div {
+          font-size: 1em;
+          color: #333;
+        }
+        .answer-container {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+        }
+
+        #qAnswer.masked {
+          color: transparent;
+          text-shadow: 0 0 5px rgba(0,0,0,0.5); /* схоже на "припорошений" текст */
+          user-select: none;
+        }
+
+        #toggleAnswerBtn {
+          background: none;
+          border: none;
+          font-size: 1em;
+          cursor: pointer;
+        }
+
+
+
+
     </style>
 </head>
 <body>
@@ -561,16 +659,24 @@ input[type="number"] {
         <button class="retryBtn" onclick="resetOutput()">Retry</button>
     </div>
     <div id="questionSelector" class="selector">
-        <label>Question:</label>
-        <button onclick="changeQuestion(-1)">◀</button>
-        <span id="questionValue">1</span>
-        <button onclick="changeQuestion(1)">▶</button>
+        <label style="font-size: 30px;" >Question:</label>
+        <button onclick="changeQuestion(-1)">
+            <img src="icon/angle-left.svg" alt="Previous" width="20" height="20">
+        </button>
+        <span style="font-size: 35px;" id="questionValue">1</span>
+        <button onclick="changeQuestion(1)">
+            <img src="icon/angle-right.svg" alt="Next" width="20" height="20">
+        </button>
     </div>
     <div id="roundSelector" class="selector">
-        <label>Round:</label>
-        <button onclick="changeRound(-1)">◀</button>
-        <span id="roundValue">2</span>
-        <button onclick="changeRound(1)">▶</button>
+        <label style="font-size: 30px;">Round:</label>
+        <button onclick="changeRound(-1)">
+            <img src="icon/angle-left.svg" alt="Previous" width="20" height="20">
+        </button>
+        <span style="font-size: 35px;" id="roundValue">2</span>
+        <button onclick="changeRound(1)">
+            <img src="icon/angle-right.svg" alt="Next" width="20" height="20">
+        </button>
     </div>
 
     <button class="retryBtn" onclick="retrySession()">Retry Session</button>
@@ -579,13 +685,38 @@ input[type="number"] {
         <img id="settingsIcon" src="https://cdn-icons-png.flaticon.com/512/2099/2099058.png" alt="Settings"
              style="width: 25px; height: 25px; cursor: pointer; margin-left: 10px;" onclick="toggleSettingsMenu()">
 
-        <div id="settingsMenu" style="display: none; position: absolute; top: 30px; right: 0; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); padding: 10px; z-index: 1000;">
-            <label><input type="checkbox" data-team="red" checked> Red</label><br>
-            <label><input type="checkbox" data-team="green" checked> Green</label><br>
-            <label><input type="checkbox" data-team="blue" checked> Blue</label><br>
-            <label><input type="checkbox" data-team="white" checked> White</label><br>
-            <label><input type="checkbox" data-team="yellow" checked> Yellow</label><br>
-            <label><input type="checkbox" data-team="pink" checked> Pink</label>
+        <div id="settingsMenu">
+            <div class="team-setting" data-team="red">
+                <input type="checkbox" data-team="red" checked>
+                <span class="team-label">Red</span>
+                <button class="edit-btn" onclick="editTeamName('red')">✏️</button>
+            </div>
+            <div class="team-setting" data-team="green">
+                <input type="checkbox" data-team="green" checked>
+                <span class="team-label">Green</span>
+                <button class="edit-btn" onclick="editTeamName('green')">✏️</button>
+            </div>
+
+            <div class="team-setting" data-team="blue">
+                <input type="checkbox" data-team="blue" checked>
+                <span class="team-label">Blue</span>
+                <button class="edit-btn" onclick="editTeamName('blue')">✏️</button>
+            </div>
+            <div class="team-setting" data-team="white">
+                <input type="checkbox" data-team="white" checked>
+                <span class="team-label">White</span>
+                <button class="edit-btn" onclick="editTeamName('white')">✏️</button>
+            </div>
+            <div class="team-setting" data-team="yellow">
+                <input type="checkbox" data-team="yellow" checked>
+                <span class="team-label">Yellow</span>
+                <button class="edit-btn" onclick="editTeamName('yellow')">✏️</button>
+            </div>
+            <div class="team-setting" data-team="pink">
+                <input type="checkbox" data-team="pink" checked>
+                <span class="team-label">Pink</span>
+                <button class="edit-btn" onclick="editTeamName('pink')">✏️</button>
+            </div>
         </div>
     </div>
 
@@ -630,7 +761,16 @@ input[type="number"] {
         </div>
         <div id="question" class="container">
             <div id="questionDisplay" class="content" style="margin-top: 10px;">
-                <p><strong>Question Number:</strong> <span id="qNumber">-</span></p>
+                <div class="question-meta">
+                    <div><strong>Question Number:</strong> <span id="qNumber">-</span></div>
+                    <div class="answer-container">
+                        <strong>Answer:</strong>
+                        <span id="qAnswer" class="masked" onclick="toggleAnswerVisibility()"></span>
+                        <button id="toggleAnswerBtn" onclick="toggleAnswerVisibility()" aria-label="Toggle Answer">
+                            👁️
+                        </button>
+                    </div>
+                </div>
                 <p><strong>Question:</strong> <span id="qText">No question loaded</span></p>
             </div>
             <div class="button-wrapper">
@@ -638,8 +778,12 @@ input[type="number"] {
                 <label for="csvUpload" class="btn btn-gray btn-small">Upload CSV</label>
                 <button class="btn btn-green btn-small" onclick="loadCSV()">Load Questions</button>
                 <button class="btn btn-red btn-small" onclick="clearCSV()">Clear Questions</button>
-                <button class="btn btn-gray btn-small" onclick="prevQuestion()">Previous</button>
-                <button class="btn btn-gray btn-small" onclick="nextQuestion()">Next</button>
+                <button class="btn btn-gray btn-small" onclick="prevQuestion()">
+                    <img src="icon/angle-left.svg" alt="Previous" width="20" height="15">
+                </button>
+                <button class="btn btn-gray btn-small" onclick="nextQuestion()">
+                    <img src="icon/angle-right.svg" alt="Next" width="20" height="15">
+                </button>
             </div>
         </div>
     </div>
@@ -1184,12 +1328,15 @@ input[type="number"] {
                 if (!questionsData.length) return;
 
                 const row = questionsData[currentQuestionIndex];
-                const qNumber = row[0] || "N/A";
-                const qText = row[1] || "No question";
+                const qNumber = row[0]?.trim() || "N/A";
+                const qText = row[1]?.trim() || "No question";
+                const qAnswer = row[2]?.trim() || "No answer";
 
                 document.getElementById('qNumber').textContent = qNumber;
                 document.getElementById('qText').textContent = qText;
+                document.getElementById('qAnswer').textContent = qAnswer;
             }
+
 
             function nextQuestion() {
                 if (currentQuestionIndex < questionsData.length - 1) {
@@ -1281,6 +1428,9 @@ input[type="number"] {
             const bgAudio = document.getElementById('soundBackground1');
             bgAudio.pause();
             bgAudio.currentTime = 0;
+            teamIds.forEach(team => {
+              localStorage.removeItem(`teamName-${team}`);
+            });
             alert("All table data cleared. You can start a new session.");
         }
         function updateTeamTotalsFromTable(tableId) {
@@ -1412,34 +1562,34 @@ input[type="number"] {
         }
 
         function applyConditionalFormattingCap() {
-    const table = document.getElementById('tableCap');
-    if (!table) return;
+            const table = document.getElementById('tableCap');
+            if (!table) return;
 
-    const rows = table.querySelectorAll('tbody tr:not(.sumRow)');
+            const rows = table.querySelectorAll('tbody tr:not(.sumRow)');
 
-    rows.forEach(row => {
-        const rowNumberCell = row.querySelector('td');
-        const rowNumber = parseInt(rowNumberCell?.textContent);
+            rows.forEach(row => {
+                const rowNumberCell = row.querySelector('td');
+                const rowNumber = parseInt(rowNumberCell?.textContent);
 
-        // 🟡 Пропускаємо перший логічний рядок (#1)
-        if (rowNumber === 1) {
-            row.style.backgroundColor = '';
-            return;
-        }
-
-        const inputs = row.querySelectorAll('input');
-        let filledCount = 0;
-        let hasNotOne = false;
-
-        inputs.forEach(input => {
-            const val = parseFloat(input.value);
-            if (!isNaN(val)) {
-                filledCount++;
-                if (val !== 1) {
-                    hasNotOne = true;
+                // 🟡 Пропускаємо перший логічний рядок (#1)
+                if (rowNumber === 1) {
+                    row.style.backgroundColor = '';
+                    return;
                 }
-            }
-        });
+
+                const inputs = row.querySelectorAll('input');
+                let filledCount = 0;
+                let hasNotOne = false;
+
+                inputs.forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        filledCount++;
+                        if (val !== 1) {
+                            hasNotOne = true;
+                        }
+                    }
+                });
 
         if (filledCount === 1 && !hasNotOne) {
             row.style.backgroundColor = '#d4edda'; // ✅ зелений
@@ -1486,15 +1636,63 @@ input[type="number"] {
                 });
                 // === КІНЕЦЬ: Відновлення стану чекбоксів ===
 
+                updateDisplayedTeamNames();
         });
-    document.addEventListener('click', function (e) {
-        const menu = document.getElementById('settingsMenu');
-        const settingsIcon = document.getElementById('settingsIcon');
+        document.addEventListener('click', function (e) {
+                const menu = document.getElementById('settingsMenu');
+            const settingsIcon = document.getElementById('settingsIcon');
 
-        if (!menu.contains(e.target) && e.target !== settingsIcon) {
-            menu.style.display = 'none';
+            if (!menu.contains(e.target) && e.target !== settingsIcon) {
+                menu.style.display = 'none';
+            }
+        });
+
+    const teamIds = ["red", "green", "blue", "white", "yellow", "pink"];
+
+        function editTeamName(team) {
+          const currentLabel = document.querySelector(`.team-setting[data-team="${team}"] .team-label`);
+          const newName = prompt("Enter new name for " + team.charAt(0).toUpperCase() + team.slice(1), currentLabel.textContent);
+          if (newName) {
+            currentLabel.textContent = newName;
+            localStorage.setItem(`teamName-${team}`, newName);
+            updateDisplayedTeamNames();
+          }
         }
-    });
+
+        function updateDisplayedTeamNames() {
+          teamIds.forEach(team => {
+            const name = localStorage.getItem(`teamName-${team}`) || team.charAt(0).toUpperCase() + team.slice(1) + " Team";
+
+            // В settings
+            const labelSpan = document.querySelector(`.team-setting[data-team="${team}"] .team-label`);
+            if (labelSpan) labelSpan.textContent = name;
+
+            // В #teamTotal
+            const totalBlock = document.querySelector(`#points-${team}`)?.parentElement;
+            if (totalBlock) {
+              const teamNameEl = totalBlock.querySelector(".team-name");
+              if (teamNameEl) teamNameEl.textContent = name;
+            }
+          });
+        }
+        let isAnswerVisible = false;
+
+        function toggleAnswerVisibility() {
+          const answerEl = document.getElementById('qAnswer');
+          const btn = document.getElementById('toggleAnswerBtn');
+
+          isAnswerVisible = !isAnswerVisible;
+
+          if (isAnswerVisible) {
+            answerEl.classList.remove('masked');
+            btn.textContent = '🙈'; // показано, тепер можна "приховати"
+          } else {
+            answerEl.classList.add('masked');
+            btn.textContent = '👁️'; // приховано, можна "показати"
+          }
+        }
+
+
 </script>
 </body>
 </html>
