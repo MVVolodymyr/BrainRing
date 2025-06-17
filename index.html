@@ -644,6 +644,12 @@ input[type="number"] {
           cursor: pointer;
         }
 
+        th.team-red, td.team-red { background: #FA8072; border: 2px solid red; }
+        th.team-green, td.team-green { background: #90EE90; border: 2px solid green; }
+        th.team-blue, td.team-blue { background: #D6EEFF; border: 2px solid blue; }
+        th.team-white, td.team-white { background: #F5F5F5; border: 2px solid #ccc; }
+        th.team-yellow, td.team-yellow { background: #FFFACD; border: 2px solid #DAA520; }
+        th.team-pink, td.team-pink { background: #FFE4E1; border: 2px solid pink; }
 
 
 
@@ -918,6 +924,15 @@ input[type="number"] {
         pink: false
     };
 
+    const teamNames = {
+      red: "Red Team",
+      green: "Green Team",
+      blue: "Blue Team",
+      white: "White Team",
+      yellow: "Yellow Team",
+      pink: "Pink Team"
+    };
+
     document.addEventListener('keydown', (event) => {
         if (!listening) return;
 
@@ -960,7 +975,8 @@ input[type="number"] {
         cloned.style.display = 'block';
 
         const title = document.createElement('div');
-        title.innerHTML = `<strong style="color:${mapping.team};">${mapping.team.charAt(0).toUpperCase() + mapping.team.slice(1)} team clicked</strong> | ${timeText}`;
+        title.innerHTML = `<strong style="color:${mapping.team};">${teamNames[mapping.team]} clicked</strong> | ${timeText}`;
+
 
         cloned.innerHTML = '';
         const inlineWrap = document.createElement('div');
@@ -1168,6 +1184,8 @@ input[type="number"] {
                     row.appendChild(document.createElement("td")).appendChild(input);
                 }
                 tbody.appendChild(row);
+
+
             }
 
             // Додати рядок для сум
@@ -1651,30 +1669,54 @@ input[type="number"] {
 
         function editTeamName(team) {
           const currentLabel = document.querySelector(`.team-setting[data-team="${team}"] .team-label`);
-          const newName = prompt("Enter new name for " + team.charAt(0).toUpperCase() + team.slice(1), currentLabel.textContent);
+          const newName = prompt("Enter new name for " + teamNames[team], currentLabel.textContent);
           if (newName) {
-            currentLabel.textContent = newName;
+            teamNames[team] = newName;
             localStorage.setItem(`teamName-${team}`, newName);
             updateDisplayedTeamNames();
           }
         }
 
-        function updateDisplayedTeamNames() {
-          teamIds.forEach(team => {
-            const name = localStorage.getItem(`teamName-${team}`) || team.charAt(0).toUpperCase() + team.slice(1) + " Team";
+            function updateDisplayedTeamNames() {
+                  const teamOrder = ["red", "green", "blue", "white", "yellow", "pink"];
+                  const tables = ["tableYesNo", "tableSimple", "tableHard", "tableCap"];
 
-            // В settings
-            const labelSpan = document.querySelector(`.team-setting[data-team="${team}"] .team-label`);
-            if (labelSpan) labelSpan.textContent = name;
+                  teamOrder.forEach(team => {
+                    // Витягуємо нову назву з localStorage або дефолтну
+                    const name = localStorage.getItem(`teamName-${team}`) || team.charAt(0).toUpperCase() + team.slice(1) + " Team";
+                    teamNames[team] = name;
 
-            // В #teamTotal
-            const totalBlock = document.querySelector(`#points-${team}`)?.parentElement;
-            if (totalBlock) {
-              const teamNameEl = totalBlock.querySelector(".team-name");
-              if (teamNameEl) teamNameEl.textContent = name;
-            }
-          });
-        }
+                    // === 1. Оновлення в settingsMenu ===
+                    const labelSpan = document.querySelector(`.team-setting[data-team="${team}"] .team-label`);
+                    if (labelSpan) labelSpan.textContent = name;
+
+                    // === 2. Оновлення в teamTotal ===
+                    const block = document.querySelector(`#points-${team}`)?.parentElement;
+                    if (block) {
+                      const nameEl = block.querySelector('.team-name');
+                      if (nameEl) nameEl.textContent = name;
+                    }
+                  });
+
+                  // === 3. Оновлення заголовків таблиць ===
+                  tables.forEach(tableId => {
+                    const table = document.getElementById(tableId);
+                    if (!table) return;
+
+                    const headerCells = table.querySelectorAll("thead tr th");
+                    teamOrder.forEach((team, index) => {
+                      const th = headerCells[index + 1]; // перший <th> — це "#", тому +1
+                      if (th) {
+                        th.textContent = teamNames[team];
+                        th.className = ""; // очищаємо всі попередні класи
+                        th.classList.add(`team-${team}`); // додаємо кольоровий клас
+                      }
+                    });
+                  });
+                }
+
+
+
         let isAnswerVisible = false;
 
         function toggleAnswerVisibility() {
