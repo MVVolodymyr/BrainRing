@@ -837,6 +837,8 @@ input[type="number"] {
             <div class="tab" data-tab="tab2">Simple questions round</div>
             <div class="tab" data-tab="tab3">Hard question round</div>
             <div class="tab" data-tab="tab4">Captains round</div>
+            <div class="tab" data-tab="tab5">Statistics</div>
+
         </div>
 
         <div class="tab-content active" id="tab1">
@@ -905,6 +907,22 @@ input[type="number"] {
                 </thead>
             </table>
         </div>
+        <div class="tab-content" id="tab5">
+            <h2>Statistics</h2>
+            <table id="statisticsTable">
+                <thead>
+                <tr>
+                    <th>Round name</th>
+                    <th>Correct answers</th>
+                    <th>Incorrect answers</th>
+                    <th>Correct in %</th>
+                </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
     </div>
 </div>
 
@@ -1421,6 +1439,8 @@ input[type="number"] {
               applyConditionalFormattingHard?.();
             } else if (tab.dataset.tab === "tab4") {
               applyConditionalFormattingCap?.();
+            }  else if (tab.dataset.tab === "tab5") {
+                generateStatistics();
             }
       });
     });
@@ -1668,6 +1688,63 @@ input[type="number"] {
 
                 updateDisplayedTeamNames();
         });
+        function generateStatistics() {
+            const tbody = document.querySelector("#statisticsTable tbody");
+            tbody.innerHTML = "";
+
+            const tableSimple = document.getElementById("tableSimple");
+            const tableHard = document.getElementById("tableHard");
+
+            const blocks = [
+                { name: "1-10 Simple", start: 1, end: 10 },
+                { name: "11-20 Simple", start: 11, end: 20 },
+                { name: "21-30 Simple", start: 21, end: 30 },
+                { name: "31-40 Simple", start: 31, end: 40 }
+            ];
+
+            let totalCorrectSimple = 0;
+
+            for (const block of blocks) {
+                let correct = 0;
+                for (let i = block.start - 1; i < block.end; i++) {
+                    const row = tableSimple.querySelectorAll("tbody tr")[i];
+                    if (!row || row.classList.contains("sumRow")) continue;
+
+                    row.querySelectorAll("input").forEach(input => {
+                        if (input.value.trim() !== "") correct++;
+                    });
+                }
+                totalCorrectSimple += correct;
+                const incorrect = 10 - correct;
+                const percent = ((correct / 10) * 100).toFixed(1) + "%";
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${block.name}</td><td>${correct}</td><td>${incorrect}</td><td>${percent}</td>`;
+                tbody.appendChild(tr);
+            }
+
+            const trSimpleTotal = document.createElement("tr");
+            const incorrectSimple = 40 - totalCorrectSimple;
+            const percentSimple = ((totalCorrectSimple / 40) * 100).toFixed(1) + "%";
+            trSimpleTotal.innerHTML = `<td><strong>Total Simple</strong></td><td>${totalCorrectSimple}</td><td>${incorrectSimple}</td><td>${percentSimple}</td>`;
+            tbody.appendChild(trSimpleTotal);
+
+            // Total Hard
+            let correctHard = 0;
+            const rowsHard = tableHard.querySelectorAll("tbody tr:not(.sumRow)");
+
+            rowsHard.forEach(row => {
+                row.querySelectorAll("input").forEach(input => {
+                    if (input.value.trim() !== "") correctHard++;
+                });
+            });
+
+            const incorrectHard = 30 - correctHard;
+            const percentHard = ((correctHard / 30) * 100).toFixed(1) + "%";
+            const trHardTotal = document.createElement("tr");
+            trHardTotal.innerHTML = `<td><strong>Total Hard</strong></td><td>${correctHard}</td><td>${incorrectHard}</td><td>${percentHard}</td>`;
+            tbody.appendChild(trHardTotal);
+        }
         document.addEventListener('click', function (e) {
                 const menu = document.getElementById('settingsMenu');
             const settingsIcon = document.getElementById('settingsIcon');
