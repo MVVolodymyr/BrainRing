@@ -12,6 +12,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brain Ring</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -964,11 +965,13 @@ input[type="number"] {
     };
 
     document.addEventListener('keydown', (event) => {
+        handleTeamClick(event.key);
+    });
+    function handleTeamClick(key) {
         if (!listening) return;
 
         const currentTime = new Date().getTime();
-        let message = "";
-        let team = "";
+        const pressedKey = key.toLowerCase();
 
         const keyMap = {
             g: { team: "green", elementId: "element1" }, п: { team: "green", elementId: "element1" },
@@ -979,16 +982,12 @@ input[type="number"] {
             p: { team: "pink", elementId: "element6" }, з: { team: "pink", elementId: "element6" }
         };
 
-        const pressedKey = event.key.toLowerCase();
         const mapping = keyMap[pressedKey];
         if (!mapping || clickedTeams[mapping.team]) return;
 
         clickedTeams[mapping.team] = true;
-
-        // Play sound
         document.getElementById(`sound${mapping.team.charAt(0).toUpperCase()}`).play();
 
-        // Calculate time difference
         let timeText = "First";
         if (lastClickTime !== 0) {
             const timeDifference = (currentTime - lastClickTime) / 1000;
@@ -999,14 +998,12 @@ input[type="number"] {
 
         lastClickTime = currentTime;
 
-        // Show corresponding hidden element as a new block in order
         const element = document.getElementById(mapping.elementId);
         const cloned = element.cloneNode(true);
         cloned.style.display = 'block';
 
         const title = document.createElement('div');
         title.innerHTML = `<strong style="color:${mapping.team};">${teamNames[mapping.team]} clicked</strong> | ${timeText}`;
-
 
         cloned.innerHTML = '';
         const inlineWrap = document.createElement('div');
@@ -1019,55 +1016,55 @@ input[type="number"] {
         inlineWrap.appendChild(title);
 
         const buttonGroup = document.createElement('div');
-            buttonGroup.className = 'button-group';
+        buttonGroup.className = 'button-group';
 
-            ['+1', '+2', '+3'].forEach((label, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'circle-button';
-                btn.textContent = label;
+        ['+1', '+2', '+3'].forEach((label, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'circle-button';
+            btn.textContent = label;
 
-                btn.addEventListener('click', () => {
-                    const roundValue = parseInt(document.getElementById('roundValue').textContent);
-                    const questionValue = parseInt(document.getElementById('questionValue').textContent);
+            btn.addEventListener('click', () => {
+                const roundValue = parseInt(document.getElementById('roundValue').textContent);
+                const questionValue = parseInt(document.getElementById('questionValue').textContent);
 
-                    let tableId = '';
-                    if (roundValue === 2) tableId = 'tableSimple';
-                    else if (roundValue === 3) tableId = 'tableHard';
-                    else if (roundValue === 4) tableId = 'tableCap';
-                    else return; // якщо round не підтримується — нічого не робимо
+                let tableId = '';
+                if (roundValue === 2) tableId = 'tableSimple';
+                else if (roundValue === 3) tableId = 'tableHard';
+                else if (roundValue === 4) tableId = 'tableCap';
+                else return;
 
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
+                const table = document.getElementById(tableId);
+                if (!table) return;
 
-                    const rowIndex = questionValue - 1; // бо індексація з 0
-                    const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
-                    const colIndex = teamOrder.indexOf(mapping.team);
-                    if (colIndex === -1) return;
+                const rowIndex = questionValue - 1;
+                const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
+                const colIndex = teamOrder.indexOf(mapping.team);
+                if (colIndex === -1) return;
 
-                    const tbody = table.querySelector('tbody');
-                    const rows = tbody.querySelectorAll('tr');
-                    const sumRowIndex = rows.length - 1;
-                    if (rowIndex >= sumRowIndex) return;
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+                const sumRowIndex = rows.length - 1;
+                if (rowIndex >= sumRowIndex) return;
 
-                    const targetRow = rows[rowIndex];
-                    const input = targetRow.querySelectorAll('input')[colIndex];
-                    if (!input) return;
+                const targetRow = rows[rowIndex];
+                const input = targetRow.querySelectorAll('input')[colIndex];
+                if (!input) return;
 
-                    const current = parseFloat(input.value) || 0;
-                    input.value = current + (index + 1);
-                    input.dispatchEvent(new Event('input')); // тригер оновлення суми
-                });
-
-
-                buttonGroup.appendChild(btn); // ✅ Додаємо кнопку у групу
+                const current = parseFloat(input.value) || 0;
+                input.value = current + (index + 1);
+                input.dispatchEvent(new Event('input'));
             });
 
-            inlineWrap.appendChild(buttonGroup);
-            cloned.appendChild(inlineWrap);
+            buttonGroup.appendChild(btn);
+        });
+
+        inlineWrap.appendChild(buttonGroup);
+        cloned.appendChild(inlineWrap);
 
         cloned.classList.add('element');
         document.getElementById('output').appendChild(cloned);
-    });
+    }
+
 
 
     function saveState() {
@@ -1822,6 +1819,43 @@ input[type="number"] {
             btn.textContent = '👁️'; // приховано, можна "показати"
           }
         }
+
+    // Налаштування MQTT
+              const mqttBrokerUrl = "ws://192.168.55.41:9001/mqtt"; // Використовуйте той самий URL, що і в "працюючому" коді
+            const topic = "esp32/button"; // ✅ відповідає ESP32
+
+            const mqttClient = mqtt.connect(mqttBrokerUrl);
+
+            mqttClient.on("connect", () => {
+              console.log("✅ MQTT connected");
+              mqttClient.subscribe(topic, err => {
+                if (err) {
+                  console.error("❌ Subscribe error:", err);
+                } else {
+                  console.log(`📡 Subscribed to topic: ${topic}`);
+                }
+              });
+            });
+
+           mqttClient.on("message", (topic, message) => {
+                const msg = message.toString().trim().toLowerCase();
+                const map = {
+                    blue: "b",
+                    red: "r",
+                    green: "g",
+                    pink: "p",
+                    yellow: "y",
+                    white: "w"
+                };
+                const key = map[msg];
+                if (key) handleTeamClick(key); // ✅ без емуляції, одразу обробка
+                console.log("📩 MQTT message received:", msg);
+                console.log("👉 Converted key:", key);
+
+            });
+
+
+
 
 
 </script>
