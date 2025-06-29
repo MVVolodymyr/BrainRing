@@ -1,0 +1,341 @@
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h> // Для дескриптора client characteristic configuration
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <Preferences.h> // Для збереження даних у NVS
+
+// ==== BLE UUIDs (Можна згенерувати свої унікальні на https://www.uuidgenerator.net/version4) ====
+// Важливо: ці UUID повинні бути однаковими як на ESP32, так і в Android-додатку!
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b" // Основний сервіс конфігурації
+#define SSID_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8" // Для Wi-Fi SSID
+#define PASS_CHARACTERISTIC_UUID "ae21cf29-9e20-4107-a3a8-b63de42145e1" // Для Wi-Fi Password
+#define IP_CHARACTERISTIC_UUID   "c345b597-2334-4a2b-92a0-4a819c9b5d3a" // Для статичної IP-адреси
+#define MQTT_SERVER_CHARACTERISTIC_UUID "e749e75a-a309-418a-83b6-2a7e7d6928e0" // Для MQTT Server IP
+#define MQTT_PAYLOAD_CHARACTERISTIC_UUID "f8f4a13d-5e26-4d2d-94d7-4c12a7f5b4d7" // Для MQTT Payload (ідентифікатора пристрою)
+
+// ==== Об'єкти BLE ====
+BLEServer* pServer = NULL;
+BLECharacteristic* pSsidCharacteristic = NULL;
+BLECharacteristic* pPassCharacteristic = NULL;
+BLECharacteristic* pIpCharacteristic = NULL;
+BLECharacteristic* pMqttServerCharacteristic = NULL;
+BLECharacteristic* pMqttPayloadCharacteristic = NULL;
+
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+// ==== Змінні для зберігання конфігурації Wi-Fi та MQTT ====
+Preferences preferences; // Об'єкт для NVS
+
+char storedSsid[32] = {0}; // Максимальна довжина SSID
+char storedPass[64] = {0}; // Максимальна довжина пароля
+char storedIp[16] = {0};   // Максимальна довжина IP-адреси (xxx.xxx.xxx.xxx\0)
+char storedMqttServer[16] = {0};
+char storedMqttPayload[32] = {0};
+
+// ==== MQTT Налаштування (використовуватимуться з NVS) ====
+const int mqttPort = 1883; // Порт MQTT зазвичай фіксований
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// ==== GPIO кнопок (залишаємо з вашого коду) ====
+const int btnInternal = 0;  // Вбудована кнопка (BOOT)
+const int btnExternal = 9;  // Зовнішня кнопка (підключи її сюди)
+
+// 🧠 Стани кнопок
+bool lastInternal = HIGH;
+bool lastExternal = HIGH;
+
+// ==== Callbacks для BLE подій ====
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      deviceConnected = true;
+      Serial.println("BLE Client Connected");
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      deviceConnected = false;
+      Serial.println("BLE Client Disconnected");
+      // Після відключення клієнта, якщо ми щось змінили, спробуємо підключитися до Wi-Fi
+      // Важливо: це може бути викликано кілька разів, тому логіку підключення краще робити в loop()
+    }
+};
+
+// ==== Callbacks для характеристик BLE (коли Android записує дані) ====
+class MyCharacteristicCallbacks: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    std::string value = pCharacteristic->getValue();
+
+    if (value.length() > 0) {
+      Serial.print("Received value for characteristic ");
+      Serial.print(pCharacteristic->getUUID().toString().c_str());
+      Serial.print(": ");
+      for (int i = 0; i < value.length(); i++)
+        Serial.print(value[i]);
+      Serial.println();
+
+      // Зберігаємо отримані дані в NVS
+      preferences.begin("wifi-config", false); // "wifi-config" - назва простору імен
+      if (pCharacteristic->getUUID().equals(SSID_CHARACTERISTIC_UUID)) {
+        strncpy(storedSsid, value.c_str(), sizeof(storedSsid) - 1);
+        storedSsid[sizeof(storedSsid) - 1] = '\0';
+        preferences.putString("ssid", storedSsid);
+        Serial.printf("Saved SSID: %s\n", storedSsid);
+      } else if (pCharacteristic->getUUID().equals(PASS_CHARACTERISTIC_UUID)) {
+        strncpy(storedPass, value.c_str(), sizeof(storedPass) - 1);
+        storedPass[sizeof(storedPass) - 1] = '\0';
+        preferences.putString("pass", storedPass);
+        Serial.printf("Saved Password: %s\n", storedPass);
+      } else if (pCharacteristic->getUUID().equals(IP_CHARACTERISTIC_UUID)) {
+        strncpy(storedIp, value.c_str(), sizeof(storedIp) - 1);
+        storedIp[sizeof(storedIp) - 1] = '\0';
+        preferences.putString("ip", storedIp);
+        Serial.printf("Saved IP: %s\n", storedIp);
+      } else if (pCharacteristic->getUUID().equals(MQTT_SERVER_CHARACTERISTIC_UUID)) {
+        strncpy(storedMqttServer, value.c_str(), sizeof(storedMqttServer) - 1);
+        storedMqttServer[sizeof(storedMqttServer) - 1] = '\0';
+        preferences.putString("mqtt_server", storedMqttServer);
+        Serial.printf("Saved MQTT Server: %s\n", storedMqttServer);
+      } else if (pCharacteristic->getUUID().equals(MQTT_PAYLOAD_CHARACTERISTIC_UUID)) {
+        strncpy(storedMqttPayload, value.c_str(), sizeof(storedMqttPayload) - 1);
+        storedMqttPayload[sizeof(storedMqttPayload) - 1] = '\0';
+        preferences.putString("mqtt_payload", storedMqttPayload);
+        Serial.printf("Saved MQTT Payload: %s\n", storedMqttPayload);
+      }
+      preferences.end();
+      // Після зміни будь-яких параметрів, спробуємо перепідключитися
+      WiFi.disconnect(true); // Відключаємося, щоб ініціювати нове підключення
+    }
+  }
+};
+
+// ==== Функція для підключення до Wi-Fi ====
+void connectToWiFi() {
+  // Перевіряємо, чи є дані Wi-Fi у NVS
+  preferences.begin("wifi-config", false);
+  String ssidStr = preferences.getString("ssid", "");
+  String passStr = preferences.getString("pass", "");
+  String ipStr = preferences.getString("ip", "");
+  preferences.end();
+
+  if (ssidStr.length() == 0 || passStr.length() == 0) {
+    Serial.println("No Wi-Fi credentials found in NVS. Waiting for BLE configuration.");
+    WiFi.disconnect(true); // Переконаємось, що Wi-Fi вимкнений
+    return;
+  }
+
+  // Налаштування статичної IP-адреси, якщо вона надана
+  if (ipStr.length() > 0) {
+    IPAddress staticIp, gateway, subnet;
+    if (staticIp.fromString(ipStr) && gateway.fromString("192.168.100.1") && subnet.fromString("255.255.255.0")) { // Можливо, Gateway/Subnet теж потрібно буде передавати через BLE
+      Serial.printf("Setting static IP: %s\n", ipStr.c_str());
+      WiFi.config(staticIp, gateway, subnet);
+    } else {
+      Serial.println("Invalid static IP format. Using DHCP.");
+    }
+  } else {
+    Serial.println("No static IP provided. Using DHCP.");
+  }
+
+  Serial.printf("Connecting to Wi-Fi: %s\n", ssidStr.c_str());
+  WiFi.begin(ssidStr.c_str(), passStr.c_str());
+
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 30000) { // Таймаут 30 секунд
+    delay(500);
+    Serial.print(".");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ Wi-Fi connected!");
+    Serial.print("📡 IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n❌ Failed to connect to Wi-Fi.");
+    WiFi.disconnect(true); // Скидаємо підключення, щоб спробувати знову
+  }
+}
+
+// ==== Функція для підключення до MQTT ====
+void reconnectMqtt() {
+  preferences.begin("wifi-config", false);
+  String mqttServerStr = preferences.getString("mqtt_server", "");
+  String mqttPayloadStr = preferences.getString("mqtt_payload", "esp32_device"); // Дефолтне значення
+  preferences.end();
+
+  if (mqttServerStr.length() == 0) {
+    Serial.println("No MQTT server IP found in NVS. Cannot connect to MQTT.");
+    return;
+  }
+
+  client.setServer(mqttServerStr.c_str(), mqttPort);
+
+  Serial.print("🔄 Connecting to MQTT server: ");
+  Serial.print(mqttServerStr);
+  Serial.print(" as client: ");
+  Serial.println(mqttPayloadStr);
+
+  while (!client.connected() && WiFi.status() == WL_CONNECTED) {
+    if (client.connect(mqttPayloadStr.c_str())) {
+      Serial.println("✅ MQTT connected!");
+      // Тут можна підписатися на топіки, якщо потрібно
+      // client.subscribe("your/topic");
+    } else {
+      Serial.print("❌ MQTT connection failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" Retrying in 5 seconds...");
+      delay(5000);
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Starting ESP32 BLE Configuration & MQTT Client...");
+
+  // Ініціалізація NVS
+  if (!preferences.begin("wifi-config", false)) { // "wifi-config" - назва простору імен
+    Serial.println("Failed to open NVS namespace 'wifi-config'");
+    return;
+  }
+
+  // Завантажуємо збережені дані при старті
+  preferences.getString("ssid", storedSsid, sizeof(storedSsid));
+  preferences.getString("pass", storedPass, sizeof(storedPass));
+  preferences.getString("ip", storedIp, sizeof(storedIp));
+  preferences.getString("mqtt_server", storedMqttServer, sizeof(storedMqttServer));
+  preferences.getString("mqtt_payload", storedMqttPayload, sizeof(storedMqttPayload));
+  preferences.end();
+
+  Serial.printf("Loaded from NVS -> SSID: '%s', Pass: '%s', IP: '%s', MQTT Server: '%s', MQTT Payload: '%s'\n",
+                storedSsid, storedPass, storedIp, storedMqttServer, storedMqttPayload);
+
+  // Налаштування BLE
+  BLEDevice::init("ESP32-Config"); // Назва, яку побачить Android-додаток
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  // Характеристика для SSID
+  pSsidCharacteristic = pService->createCharacteristic(
+                      SSID_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+                    );
+  pSsidCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pSsidCharacteristic->addDescriptor(new BLE2902()); // Додаємо дескриптор, якщо потрібно
+
+  // Характеристика для пароля
+  pPassCharacteristic = pService->createCharacteristic(
+                      PASS_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+                    );
+  pPassCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pPassCharacteristic->addDescriptor(new BLE2902());
+
+  // Характеристика для IP-адреси
+  pIpCharacteristic = pService->createCharacteristic(
+                      IP_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+                    );
+  pIpCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pIpCharacteristic->addDescriptor(new BLE2902());
+
+  // Характеристика для MQTT Server IP
+  pMqttServerCharacteristic = pService->createCharacteristic(
+                      MQTT_SERVER_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+                    );
+  pMqttServerCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pMqttServerCharacteristic->addDescriptor(new BLE2902());
+
+  // Характеристика для MQTT Payload (client ID / device ID)
+  pMqttPayloadCharacteristic = pService->createCharacteristic(
+                      MQTT_PAYLOAD_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+                    );
+  pMqttPayloadCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pMqttPayloadCharacteristic->addDescriptor(new BLE2902());
+
+  pService->start();
+
+  // Налаштування реклами BLE
+  BLEAdvertising *pAdvertising = BLEDevice::advertisingForCallbacks();
+  pAdvertising->addServiceUUID(SERVICE_UUID); // Додаємо наш сервіс до рекламного пакета
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);  // Допомагає Android швидше знайти
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+  Serial.println("BLE Advertising started. Waiting for connections...");
+
+  // Налаштування кнопок
+  pinMode(btnInternal, INPUT_PULLUP); // BOOT
+  pinMode(btnExternal, INPUT_PULLUP); // Зовнішня кнопка
+
+  // Спроба підключитися до Wi-Fi та MQTT з збереженими даними
+  connectToWiFi();
+  if (WiFi.status() == WL_CONNECTED) {
+    reconnectMqtt();
+  }
+}
+
+void loop() {
+  // Логіка перепідключення до Wi-Fi, якщо від'єдналися
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi disconnected. Reconnecting...");
+    connectToWiFi();
+  }
+
+  // Логіка перепідключення до MQTT, якщо від'єдналися
+  if (WiFi.status() == WL_CONNECTED && !client.connected()) {
+    reconnectMqtt();
+  }
+
+  // Обов'язково викликати client.loop() для підтримки MQTT з'єднання
+  if (client.connected()) {
+    client.loop();
+  }
+
+  // Управління станом BLE-з'єднання для перерекламування
+  if (!deviceConnected && oldDeviceConnected) {
+      delay(500); // Даємо час Bluetooth стеку
+      pServer->startAdvertising(); // Перезапускаємо рекламу
+      Serial.println("Restarting BLE advertising");
+      oldDeviceConnected = deviceConnected;
+  }
+  if (deviceConnected && !oldDeviceConnected) {
+      oldDeviceConnected = deviceConnected;
+  }
+
+  // ---------- BOOT кнопка ----------
+  int readingInt = digitalRead(btnInternal);
+  if (readingInt == LOW && lastInternal == HIGH) {
+    delay(20);  // debounce
+    if (digitalRead(btnInternal) == LOW) {
+      Serial.println("Кнопка BOOT натиснута");
+      if (client.connected()) {
+        client.publish("esp32/button", storedMqttPayload);
+      } else {
+        Serial.println("MQTT Not connected, cannot publish button event.");
+      }
+    }
+  }
+  lastInternal = readingInt;
+
+  // ---------- Зовнішня кнопка ----------
+  int readingExt = digitalRead(btnExternal);
+  if (readingExt == LOW && lastExternal == HIGH) {
+    delay(20);  // debounce
+    if (digitalRead(btnExternal) == LOW) {
+      Serial.println("Зовнішня кнопка натиснута");
+      if (client.connected()) {
+        client.publish("esp32/button", storedMqttPayload);
+      } else {
+        Serial.println("MQTT Not connected, cannot publish button event.");
+      }
+    }
+  }
+  lastExternal = readingExt;
+}

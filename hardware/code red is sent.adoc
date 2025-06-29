@@ -2,9 +2,9 @@
 #include <PubSubClient.h>
 
 // 🔧 Налаштування Wi-Fi та MQTT
-const char* ssid       = "striker";
-const char* password   = "C9j4N5z2";
-const char* mqttServer = "192.168.55.41";  // IP твого MQTT-брокера
+const char* ssid       = "DIRECT-NS-brain";
+const char* password   = "87654321";
+const char* mqttServer = "192.168.100.69";  // IP твого MQTT-брокера
 const int   mqttPort   = 1883;
 
 // 🔘 GPIO кнопок
