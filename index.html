@@ -736,6 +736,18 @@ input[type="number"] {
                     <img style="width:15px; height: 15px" src="icon/pencil.svg">
                 </button>
             </div>
+
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+
+            <div class="mqtt-setting">
+                <label for="mqttBrokerIp">MQTT Broker IP:</label>
+                <input type="text" id="mqttBrokerIp" placeholder="e.g., 192.168.55.16" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div class="mqtt-setting" style="margin-top: 10px; display: flex; align-items: center;">
+                <input type="checkbox" id="enableMqtt" style="margin-right: 8px;">
+                <label for="enableMqtt">Enable MQTT Connection</label>
+            </div>
+            <button onclick="saveMqttSettings()" style="margin-top: 15px; padding: 8px 15px; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer;">Save MQTT Settings</button>
         </div>
     </div>
 
@@ -1820,25 +1832,91 @@ input[type="number"] {
           }
         }
 
-    // Налаштування MQTT
-              const mqttBrokerUrl = "ws://192.168.55.41:8080/mqtt"; // Використовуйте той самий URL, що і в "працюючому" коді
-            const topic = "esp32/button"; // ✅ відповідає ESP32
+    // // --- MQTT Related Variables and Functions ---
+    let client = null; // Global MQTT client instance
+    const MQTT_PORT_PATH = ":8080/mqtt"; // Константа для порту та шляху
 
-            const mqttClient = mqtt.connect(mqttBrokerUrl);
+    function saveMqttSettings() {
+        const mqttBrokerIp = document.getElementById('mqttBrokerIp').value.trim(); // Отримуємо лише IP
+        const enableMqtt = document.getElementById('enableMqtt').checked;
 
-            mqttClient.on("connect", () => {
-              console.log("✅ MQTT connected");
-              mqttClient.subscribe(topic, err => {
-                if (err) {
-                  console.error("❌ Subscribe error:", err);
-                } else {
-                  console.log(`📡 Subscribed to topic: ${topic}`);
-                }
-              });
+        localStorage.setItem('mqttBrokerIp', mqttBrokerIp);
+        localStorage.setItem('enableMqtt', enableMqtt);
+
+        alert('MQTT settings saved! Refreshing page to apply changes.');
+        window.location.reload(); // Refresh to apply new MQTT settings
+    }
+
+    function loadMqttSettings() {
+        const savedIp = localStorage.getItem('mqttBrokerIp');
+        const savedEnable = localStorage.getItem('enableMqtt');
+
+        if (savedIp) {
+            document.getElementById('mqttBrokerIp').value = savedIp;
+        } else {
+            // Встановлюємо IP за замовчуванням, якщо нічого не збережено
+            document.getElementById('mqttBrokerIp').value = "192.168.55.16";
+        }
+
+        if (savedEnable !== null) {
+            document.getElementById('enableMqtt').checked = (savedEnable === 'true');
+        } else {
+            // За замовчуванням увімкнено, якщо не встановлено
+            document.getElementById('enableMqtt').checked = true;
+        }
+    }
+
+    function initializeMqtt() {
+        const enableMqtt = document.getElementById('enableMqtt').checked;
+        const mqttBrokerIp = document.getElementById('mqttBrokerIp').value.trim(); // Отримуємо лише IP
+
+        // Формуємо повний URL брокера
+        const mqttBrokerUrl = `ws://${mqttBrokerIp}${MQTT_PORT_PATH}`;
+
+        if (!enableMqtt || !mqttBrokerIp) {
+            console.warn("MQTT connection is disabled or broker IP is not set. Skipping connection attempt.");
+            if (client && client.connected) {
+                client.end(true, () => console.log('Disconnected MQTT due to settings.'));
+                client = null;
+            }
+            return;
+        }
+
+        if (client && client.connected) {
+            console.log("MQTT client already connected.");
+            return;
+        }
+
+        console.log(`Attempting to connect to MQTT broker: ${mqttBrokerUrl}`);
+        client = mqtt.connect(mqttBrokerUrl);
+
+        client.on('connect', () => {
+            console.log('✅ MQTT connected');
+            // Підписуємося на топіки, які очікуємо від ESP32 та інших джерел
+            const topicsToSubscribe = [
+                "esp32/button", // Змінна вхідних даних з ESP32
+                "brain_ring/general",
+                "brain_ring/buzzer",
+                "brain_ring/scores"
+            ];
+
+            topicsToSubscribe.forEach(topic => {
+                client.subscribe(topic, {qos: 0}, (err) => {
+                    if (!err) {
+                        console.log(`📡 Subscribed to topic: ${topic}`);
+                    } else {
+                        console.error("❌ Subscribe error for topic " + topic + ":", err);
+                    }
+                });
             });
+        });
 
-           mqttClient.on("message", (topic, message) => {
-                const msg = message.toString().trim().toLowerCase();
+        client.on('message', (topic, message) => {
+            const msg = message.toString().trim().toLowerCase();
+            console.log(`📩 MQTT message received from topic ${topic}: ${msg}`);
+
+            // Обробка повідомлень з топіка esp32/button
+            if (topic === 'esp32/button') {
                 const map = {
                     blue: "b",
                     red: "r",
@@ -1848,12 +1926,90 @@ input[type="number"] {
                     white: "w"
                 };
                 const key = map[msg];
-                if (key) handleTeamClick(key); // ✅ без емуляції, одразу обробка
-                console.log("📩 MQTT message received:", msg);
-                console.log("👉 Converted key:", key);
+                if (key) {
+                    console.log("👉 Converted key for handleTeamClick:", key);
+                    handleTeamClick(key); // Без емуляції, одразу обробка
+                } else {
+                    console.warn(`Unknown button message received: ${msg}`);
+                }
+            } else if (topic === 'brain_ring/general') {
+                // Обробка загальних команд, якщо вони будуть
+                console.log(`General command received: ${msg}`);
+            } else if (topic === 'brain_ring/buzzer') {
+                // Обробка повідомлень про дзвінки, якщо вони надходять не з esp32/button
+                console.log(`Buzzer message received: ${msg}`);
+            } else if (topic === 'brain_ring/scores') {
+                // Обробка оновлень рахунку
+                try {
+                    const scoreData = JSON.parse(msg);
+                    console.log("Score update received:", scoreData);
+                    // updateScoresFromMqtt(scoreData); // Якщо у вас є така функція
+                } catch (e) {
+                    console.error("Error parsing scores message:", e);
+                }
+            }
+        });
 
+        client.on('error', (err) => {
+            console.error('MQTT Connection Error:', err);
+            // Optionally, update UI to show connection status or error
+        });
+
+        client.on('close', () => {
+            console.log('MQTT connection closed.');
+            // Optionally, update UI to show connection status
+        });
+
+        client.on('offline', () => {
+            console.log('MQTT client is offline (network disconnected).');
+        });
+
+        client.on('reconnect', () => {
+            console.log('Attempting to reconnect to MQTT...');
+        });
+    }
+
+    function publishMqttMessage(topic, message) {
+        if (client && client.connected) {
+            client.publish(topic, message, {qos: 0, retain: false}, (err) => {
+                if (err) {
+                    console.error('Failed to publish message:', err);
+                } else {
+                    console.log(`Published to ${topic}: ${message}`);
+                }
             });
+        } else {
+            console.warn("MQTT client not connected. Message not published.");
+        }
+    }
+    // --- End MQTT Related Functions ---
 
+    // Ensure MQTT is initialized when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load team visibility and names first
+        const teams = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
+        teams.forEach(team => {
+            const isHidden = localStorage.getItem(`hideTeam-${team}`);
+            const checkbox = document.querySelector(`#settingsMenu input[data-team="${team}"]`);
+            if (isHidden === 'true') {
+                document.body.classList.add(`hide-${team}`);
+                if (checkbox) checkbox.checked = false;
+            } else {
+                 if (checkbox) checkbox.checked = true;
+            }
+
+            const savedName = localStorage.getItem(`teamName-${team}`);
+            if (savedName) {
+                teamNames[team] = savedName;
+                document.querySelector(`.team-setting[data-team="${team}"] .team-label`).textContent = savedName;
+                document.querySelector(`#teamTotal > div:nth-child(${teams.indexOf(team) + 1}) .team-name`).textContent = savedName;
+            }
+        });
+
+        // Load MQTT settings and then initialize MQTT client
+        loadMqttSettings();
+        initializeMqtt();
+    });
 
 
 
