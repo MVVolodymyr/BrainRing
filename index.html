@@ -1834,7 +1834,7 @@ input[type="number"] {
 
     // // --- MQTT Related Variables and Functions ---
     let client = null; // Global MQTT client instance
-    const MQTT_PORT_PATH = ":8080/mqtt"; // Константа для порту та шляху
+    const MQTT_PORT_PATH = ":8081/mqtt"; // Константа для порту та шляху
 
     function saveMqttSettings() {
         const mqttBrokerIp = document.getElementById('mqttBrokerIp').value.trim(); // Отримуємо лише IP
@@ -1871,7 +1871,7 @@ input[type="number"] {
         const mqttBrokerIp = document.getElementById('mqttBrokerIp').value.trim(); // Отримуємо лише IP
 
         // Формуємо повний URL брокера
-        const mqttBrokerUrl = `ws://${mqttBrokerIp}${MQTT_PORT_PATH}`;
+        const mqttBrokerUrl = `wss://${mqttBrokerIp}${MQTT_PORT_PATH}`;
 
         if (!enableMqtt || !mqttBrokerIp) {
             console.warn("MQTT connection is disabled or broker IP is not set. Skipping connection attempt.");
