@@ -1,82 +1,74 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-#include <BLE2902.h> // Для дескриптора client characteristic configuration
+#include <BLE2902.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <Preferences.h> // Для збереження даних у NVS
+#include <Preferences.h>
+
+// ==== Включення бібліотек для NTP (SNTP) ====
+#include <time.h>        // Для struct tm
+#include <sys/time.h>    // Для gettimeofday (ВАЖЛИВО: для мікросекундної точності)
+#include "esp_sntp.h"    // Основний заголовок для SNTP
 
 // ==== BLE UUIDs (Можна згенерувати свої унікальні на https://www.uuidgenerator.net/version4) ====
-// Важливо: ці UUID повинні бути однаковими як на ESP32, так і в Android-додатку!
-// Використовуємо BLEUUID() для явного створення об'єктів BLEUUID
-#define SERVICE_UUID_STR        "4fafc201-1fb5-459e-8fcc-c5c9c331914b" // Ваш основний сервіс
-#define SSID_CHARACTERISTIC_UUID_STR "beb5483e-36e1-4688-b7f5-ea07361b26a8" // Для Wi-Fi SSID
-#define PASS_CHARACTERISTIC_UUID_STR "ae21cf29-9e20-4107-a3a8-b63de42145e1" // Для Wi-Fi Password
-// #define IP_CHARACTERISTIC_UUID_STR   "c345b597-2334-4a2b-92a0-4a819c9b5d3a" // ВИДАЛЕНО: Для статичної IP-адреси
-// ВИДАЛЕНО: Характеристики для MQTT Server IP
-// #define MQTT_SERVER_CHARACTERISTIC_UUID_STR "e749e75a-a309-418a-83b6-2a7e7d6928e0"
-// ПОВЕРНУТО: Характеристика для MQTT Payload (ідентифікатора пристрою / Client ID)
+#define SERVICE_UUID_STR                     "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SSID_CHARACTERISTIC_UUID_STR         "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define PASS_CHARACTERISTIC_UUID_STR         "ae21cf29-9e20-4107-a3a8-b63de42145e1"
 #define MQTT_PAYLOAD_CHARACTERISTIC_UUID_STR "f8f4a13d-5e26-4d2d-94d7-4c12a7f5b4d7"
 
-// Конвертуємо строкові UUIDs у об'єкти BLEUUID для порівняння
-const BLEUUID SERVICE_UUID = BLEUUID(SERVICE_UUID_STR);
-const BLEUUID SSID_CHARACTERISTIC_UUID = BLEUUID(SSID_CHARACTERISTIC_UUID_STR);
-const BLEUUID PASS_CHARACTERISTIC_UUID = BLEUUID(PASS_CHARACTERISTIC_UUID_STR);
-// const BLEUUID IP_CHARACTERISTIC_UUID = BLEUUID(IP_CHARACTERISTIC_UUID_STR); // ВИДАЛЕНО
-// ВИДАЛЕНО: const BLEUUID MQTT_SERVER_CHARACTERISTIC_UUID = BLEUUID(MQTT_SERVER_CHARACTERISTIC_UUID_STR);
-// ПОВЕРНУТО:
+const BLEUUID SERVICE_UUID                 = BLEUUID(SERVICE_UUID_STR);
+const BLEUUID SSID_CHARACTERISTIC_UUID     = BLEUUID(SSID_CHARACTERISTIC_UUID_STR);
+const BLEUUID PASS_CHARACTERISTIC_UUID     = BLEUUID(PASS_CHARACTERISTIC_UUID_STR);
 const BLEUUID MQTT_PAYLOAD_CHARACTERISTIC_UUID = BLEUUID(MQTT_PAYLOAD_CHARACTERISTIC_UUID_STR);
-
 
 // ==== Об'єкти BLE ====
 BLEServer* pServer = NULL;
 BLECharacteristic* pSsidCharacteristic = NULL;
 BLECharacteristic* pPassCharacteristic = NULL;
-// BLECharacteristic* pIpCharacteristic = NULL; // ВИДАЛЕНО
-// ВИДАЛЕНО: BLECharacteristic* pMqttServerCharacteristic = NULL;
-// ПОВЕРНУТО:
 BLECharacteristic* pMqttPayloadCharacteristic = NULL;
-BLEAdvertising *pAdvertising = NULL; // Глобальна змінна для керування рекламою
+BLEAdvertising *pAdvertising = NULL;
 
 bool deviceConnected = false;
-bool oldDeviceConnected = false; // Використовується для виявлення зміни стану підключення
+bool oldDeviceConnected = false;
 
 // ==== Змінні для зберігання конфігурації Wi-Fi та MQTT ====
-Preferences preferences; // Об'єкт для NVS (Non-Volatile Storage)
+Preferences preferences;
 
-char storedSsid[32] = {0}; // Максимальна довжина SSID
-char storedPass[64] = {0}; // Максимальна довжина пароля
-// char storedIp[16] = {0};   // ВИДАЛЕНО: Максимальна довжина IP-адреси (xxx.xxx.xxx.xxx\0)
+char storedSsid[32] = {0};
+char storedPass[64] = {0};
+char storedMqttPayload[32] = {0};
 
-// ПОВЕРНУТО: Змінна для зберігання MQTT Payload (Client ID) з NVS
-char storedMqttPayload[32] = {0}; // Максимальна довжина MQTT Payload (Device ID/Client ID)
-
-// ==== MQTT Налаштування (Хардкодні, крім Client ID) ====
-const int mqttPort = 1883; // Порт MQTT зазвичай фіксований для незашифрованого з'єднання
+// ==== MQTT Налаштування ====
+const int mqttPort = 1883;
 const char* MQTT_SERVER = "io.adafruit.com";
 const char* MQTT_USERNAME = "vmishchenko"; // ВАШЕ ІМ'Я КОРИСТУВАЧА ADAFRUIT IO
-const char* MQTT_AIO_KEY = "aio_hYwv68ztp0y0FpmvqtA38dQU8tGB"; // ВАШ AIO KEY
-// MQTT_CLIENT_ID тепер буде братися зі storedMqttPayload
+const char* MQTT_AIO_KEY = ""; // ВАШ AIO KEY
 const char* MQTT_TOPIC_BUTTON = "vmishchenko/feeds/esp32-button"; // Топік для публікації кнопки
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // ==== GPIO кнопок ====
-const int btnInternal = 0;  // Вбудована кнопка (BOOT на більшості ESP32 devboards)
-const int btnExternal = 9;  // Зовнішня кнопка (підключи її сюди)
+const int btnInternal = 0;
+const int btnExternal = 9;
 
-// Стани кнопок для дебаунсу
 bool lastInternal = HIGH;
 bool lastExternal = HIGH;
+
+// ==== Змінна для відстеження стану синхронізації часу ====
+bool timeSynchronized = false;
+
+// ==== NTP Сервери та часовий пояс ====
+const char* ntpServer1 = "pool.ntp.org";
+const char* ntpServer2 = "time.google.com";
+const char* timeZone = "EET-2EEST,M3.5.0/3,M10.5.0/4"; // Часовий пояс для Києва/Бухареста
 
 // ==== Callbacks для BLE подій сервера ====
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       deviceConnected = true;
       Serial.println("BLE Client Connected");
-      // Після підключення клієнта припиняємо рекламу, щоб ESP32 не був видимим для інших пристроїв,
-      // коли вже є активне з'єднання. Це економить енергію.
       if (pAdvertising != NULL) {
         pAdvertising->stop();
         Serial.println("BLE Advertising stopped on connect.");
@@ -86,17 +78,15 @@ class MyServerCallbacks: public BLEServerCallbacks {
     void onDisconnect(BLEServer* pServer) {
       deviceConnected = false;
       Serial.println("BLE Client Disconnected");
-      // Після відключення клієнта, перезапускаємо рекламу, щоб пристрій був знову видимим.
-      // Невеликий delay перед стартом реклами може допомогти уникнути проблем.
       if (pAdvertising != NULL) {
-        delay(500); // Даємо час Bluetooth стеку для коректного завершення з'єднання
-        pAdvertising->start(); // Перезапускаємо рекламу
+        delay(500);
+        pAdvertising->start();
         Serial.println("Restarting BLE advertising after disconnect.");
       }
     }
 };
 
-// ==== Callbacks для характеристик BLE (коли Android записує дані на ESP32) ====
+// ==== Callbacks для характеристик BLE ====
 class MyCharacteristicCallbacks: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
     std::string value = pCharacteristic->getValue();
@@ -109,45 +99,40 @@ class MyCharacteristicCallbacks: public BLECharacteristicCallbacks {
         Serial.print(value[i]);
       Serial.println("'");
 
-      // Відкриваємо NVS для запису
-      preferences.begin("wifi-config", false); // "wifi-config" - назва простору імен, false означає режим читання/запису
+      preferences.begin("wifi-config", false);
 
-      bool success = false; // Змінна для відстеження успіху запису
+      bool success = false;
 
       if (pCharacteristic->getUUID().equals(SSID_CHARACTERISTIC_UUID)) {
-        // Копіюємо отримане значення в буфер, обмежуючи довжину
         strncpy(storedSsid, value.c_str(), sizeof(storedSsid) - 1);
-        storedSsid[sizeof(storedSsid) - 1] = '\0'; // Забезпечуємо нульове завершення
-        success = preferences.putString("ssid", storedSsid); // Зберігаємо в NVS
+        storedSsid[sizeof(storedSsid) - 1] = '\0';
+        success = preferences.putString("ssid", storedSsid);
         Serial.printf("Saved SSID: '%s' (Success: %s)\n", storedSsid, success ? "true" : "false");
       } else if (pCharacteristic->getUUID().equals(PASS_CHARACTERISTIC_UUID)) {
         strncpy(storedPass, value.c_str(), sizeof(storedPass) - 1);
         storedPass[sizeof(storedPass) - 1] = '\0';
         success = preferences.putString("pass", storedPass);
         Serial.printf("Saved Password: '%s' (Success: %s)\n", storedPass, success ? "true" : "false");
-      }
-      // ПОВЕРНУТО: Логіка для MQTT Payload (Client ID)
-      else if (pCharacteristic->getUUID().equals(MQTT_PAYLOAD_CHARACTERISTIC_UUID)) {
+      } else if (pCharacteristic->getUUID().equals(MQTT_PAYLOAD_CHARACTERISTIC_UUID)) {
         strncpy(storedMqttPayload, value.c_str(), sizeof(storedMqttPayload) - 1);
         storedMqttPayload[sizeof(storedMqttPayload) - 1] = '\0';
         success = preferences.putString("mqtt_payload", storedMqttPayload);
         Serial.printf("Saved MQTT Payload (Client ID): '%s' (Success: %s)\n", storedMqttPayload, success ? "true" : "false");
       }
-      preferences.end(); // Закриваємо NVS
+      preferences.end();
 
-      // Після зміни Wi-Fi або MQTT параметрів, відключаємося від Wi-Fi, щоб ініціювати нове підключення.
-      // Це гарантує, що нові налаштування будуть застосовані.
       if (pCharacteristic->getUUID().equals(SSID_CHARACTERISTIC_UUID) ||
           pCharacteristic->getUUID().equals(PASS_CHARACTERISTIC_UUID) ||
           pCharacteristic->getUUID().equals(MQTT_PAYLOAD_CHARACTERISTIC_UUID)) {
         WiFi.disconnect(true);
-        Serial.println("Wi-Fi disconnected to apply new settings (or prepare for MQTT re-connection).");
+        timeSynchronized = false; // Скидаємо прапорець синхронізації часу
+        Serial.println("Wi-Fi disconnected to apply new settings / prepare for re-connection.");
       }
     }
   }
 };
 
-// Допоміжна функція для перетворення статусу Wi-Fi в рядок (для читабельності)
+// Допоміжна функція для перетворення статусу Wi-Fi в рядок
 const char* wifiStatusToStr(int status) {
   switch(status) {
     case WL_IDLE_STATUS:    return "Idle";
@@ -163,7 +148,6 @@ const char* wifiStatusToStr(int status) {
 
 // ==== Функція для підключення до Wi-Fi ====
 void connectToWiFi() {
-  // Завантажуємо дані з NVS
   preferences.begin("wifi-config", false);
   String ssidStr = preferences.getString("ssid", "");
   String passStr = preferences.getString("pass", "");
@@ -171,20 +155,15 @@ void connectToWiFi() {
 
   if (ssidStr.length() == 0 || passStr.length() == 0) {
     Serial.println("No Wi-Fi credentials found in NVS. Waiting for BLE configuration.");
-    WiFi.disconnect(true); // Переконуємось, що ми відключені
+    WiFi.disconnect(true);
     return;
   }
 
-  // Завжди використовуємо DHCP для отримання IP-адреси
-  // Це скидає будь-які попередні налаштування статичної IP.
-  Serial.println("Configuring Wi-Fi for DHCP.");
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // (IP, Gateway, Subnet) - INADDR_NONE означає DHCP
-
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // Використовуємо DHCP
   Serial.printf("Connecting to Wi-Fi: '%s'...\n", ssidStr.c_str());
   WiFi.begin(ssidStr.c_str(), passStr.c_str());
 
   unsigned long startTime = millis();
-  // Чекаємо підключення, але не більше 30 секунд
   while (WiFi.status() != WL_CONNECTED && (millis() - startTime < 30000)) {
     delay(500);
     Serial.print(".");
@@ -196,49 +175,40 @@ void connectToWiFi() {
     Serial.println(WiFi.localIP());
   } else {
     Serial.printf("\n❌ Failed to connect to Wi-Fi. WiFi Status: %d (%s)\n", WiFi.status(), wifiStatusToStr(WiFi.status()));
-    WiFi.disconnect(true); // Відключаємось, якщо підключення не вдалося
+    WiFi.disconnect(true);
   }
 }
 
-
 // ==== Функція для підключення до MQTT ====
 void reconnectMqtt() {
-  // Завантажуємо Client ID з NVS
   preferences.begin("wifi-config", false);
-  String mqttPayloadStr = preferences.getString("mqtt_payload", ""); // Завантажуємо Client ID
+  String mqttPayloadStr = preferences.getString("mqtt_payload", "");
   preferences.end();
 
-  // Перевірка, чи Client ID є порожнім
   if (mqttPayloadStr.length() == 0) {
     Serial.println("No MQTT Client ID found in NVS. Cannot connect to MQTT. Please configure via BLE.");
     return;
   }
 
-  // Перевіряємо, чи є з'єднання Wi-Fi, перед тим як намагатися підключитися до MQTT
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Wi-Fi not connected, cannot connect to MQTT.");
     return;
   }
 
-  client.setServer(MQTT_SERVER, mqttPort); // Використовуємо хардкоджений MQTT_SERVER
+  client.setServer(MQTT_SERVER, mqttPort);
 
   Serial.print("🔄 Connecting to MQTT server: ");
   Serial.print(MQTT_SERVER);
   Serial.print(" as client: ");
-  Serial.println(mqttPayloadStr); // Використовуємо завантажений Client ID
+  Serial.println(mqttPayloadStr);
 
   unsigned long startTime = millis();
-  // Намагаємося підключитися до MQTT, але не більше 30 секунд
   while (!client.connected() && (millis() - startTime < 30000)) {
-    // client.connect() повертає true при успішному підключенні
-    // Використовуємо Client ID з NVS, та хардкоджені MQTT_USERNAME, MQTT_AIO_KEY
     if (client.connect(mqttPayloadStr.c_str(), MQTT_USERNAME, MQTT_AIO_KEY)) {
       Serial.println("✅ MQTT connected!");
-      // Тут можна підписатися на топіки, якщо потрібно
-      // client.subscribe("your/topic");
     } else {
       Serial.printf("❌ MQTT connection failed, rc=%d. Retrying in 5 seconds...\n", client.state());
-      delay(5000); // Затримка перед наступною спробою
+      delay(5000);
     }
   }
   if (!client.connected()) {
@@ -246,32 +216,64 @@ void reconnectMqtt() {
   }
 }
 
+// --- Функція зворотного виклику для SNTP (для отримання сповіщень) ---
+void timeSyncNotificationCallback(struct timeval *tv)
+{
+    Serial.printf("NTP time synchronized, new time: %ld seconds\n", tv->tv_sec);
+    timeSynchronized = true;
+}
+
+// Функція для ініціалізації та синхронізації SNTP
+void syncTimeWithNTP() {
+    Serial.println("Initializing SNTP...");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, ntpServer1);
+    sntp_setservername(1, ntpServer2);
+    sntp_set_time_sync_notification_cb(timeSyncNotificationCallback); // Реєструємо callback
+    sntp_init();
+
+    Serial.println("SNTP init complete. Waiting for time synchronization...");
+    unsigned long startTime = millis();
+    while (!timeSynchronized && (millis() - startTime < 15000)) { // Чекаємо до 15 секунд
+        delay(500);
+        Serial.print(".");
+    }
+    if (timeSynchronized) {
+      Serial.println("\n✅ Time synchronized successfully after init.");
+      setenv("TZ", timeZone, 1);
+      tzset();
+      time_t now;
+      struct tm timeinfo;
+      time(&now);
+      localtime_r(&now, &timeinfo);
+      char strftime_buf[64];
+      strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+      Serial.printf("Current date/time (local): %s\n", strftime_buf);
+    } else {
+      Serial.println("\n❌ Time synchronization still pending after initial wait.");
+    }
+}
+
+// ==== Setup функція ====
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting ESP32 BLE Configuration & MQTT Client...");
 
-  // Ініціалізація NVS
-  if (!preferences.begin("wifi-config", false)) { // "wifi-config" - назва простору імен
+  if (!preferences.begin("wifi-config", false)) {
     Serial.println("❌ Failed to open NVS namespace 'wifi-config'!");
-    return; // Критична помилка, не можемо продовжити без NVS
+    return;
   }
   Serial.println("NVS namespace 'wifi-config' opened successfully.");
 
-  // Якщо потрібно ОЧИСТИТИ ВСІ ЗБЕРЕЖЕНІ НАЛАШТУВАННЯ (використовувати обережно!):
-  // preferences.clear();
-  // Serial.println("⚠️ NVS очищено. Будь ласка, перезапишіть дані через BLE.");
-
-  // Завантажуємо збережені дані Wi-Fi та MQTT Client ID при старті
   String loadedSsid = preferences.getString("ssid", "");
   String loadedPass = preferences.getString("pass", "");
-  String loadedMqttPayload = preferences.getString("mqtt_payload", ""); // Завантажуємо Client ID
+  String loadedMqttPayload = preferences.getString("mqtt_payload", "");
 
-  // Копіюємо String у char[]
   strncpy(storedSsid, loadedSsid.c_str(), sizeof(storedSsid) - 1); storedSsid[sizeof(storedSsid)-1] = '\0';
   strncpy(storedPass, loadedPass.c_str(), sizeof(storedPass) - 1); storedPass[sizeof(storedPass)-1] = '\0';
   strncpy(storedMqttPayload, loadedMqttPayload.c_str(), sizeof(storedMqttPayload) - 1); storedMqttPayload[sizeof(storedMqttPayload)-1] = '\0';
 
-  preferences.end(); // Закриваємо NVS після читання
+  preferences.end();
   Serial.println("NVS read complete.");
 
   Serial.printf("Loaded from NVS -> SSID: '%s', Pass: '%s', MQTT Client ID: '%s'\n",
@@ -279,82 +281,71 @@ void setup() {
   Serial.printf("Using hardcoded MQTT Server: '%s', User: '%s'\n",
                 MQTT_SERVER, MQTT_USERNAME);
 
-
   // Налаштування BLE
-  BLEDevice::init("ESP32-Config"); // Назва, яку побачить Android-додаток при скануванні
+  BLEDevice::init("ESP32-BrainRing");
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  // Характеристика для SSID
-  pSsidCharacteristic = pService->createCharacteristic(
-                      SSID_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
-                    );
+  pSsidCharacteristic = pService->createCharacteristic(SSID_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
   pSsidCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
   pSsidCharacteristic->addDescriptor(new BLE2902());
 
-  // Характеристика для пароля
-  pPassCharacteristic = pService->createCharacteristic(
-                      PASS_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
-                    );
+  pPassCharacteristic = pService->createCharacteristic(PASS_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
   pPassCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
   pPassCharacteristic->addDescriptor(new BLE2902());
 
-  // ПОВЕРНУТО: Характеристика для MQTT Payload (client ID / device ID)
-  pMqttPayloadCharacteristic = pService->createCharacteristic(
-                      MQTT_PAYLOAD_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
-                    );
+  pMqttPayloadCharacteristic = pService->createCharacteristic(MQTT_PAYLOAD_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
   pMqttPayloadCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
   pMqttPayloadCharacteristic->addDescriptor(new BLE2902());
 
-  pService->start(); // Запускаємо BLE сервіс
+  pService->start();
 
-  // Налаштування реклами BLE
-  pAdvertising = pServer->getAdvertising(); // Отримуємо об'єкт реклами з сервера
-  pAdvertising->addServiceUUID(SERVICE_UUID); // Додаємо UUID нашого сервісу до рекламного пакета
-  pAdvertising->setScanResponse(true); // Дозволяємо сканувати відповідь (більше даних)
-  pAdvertising->setMinPreferred(0x06);  // Допомагає Android швидше знайти пристрій
+  pAdvertising = pServer->getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
   pAdvertising->setMinPreferred(0x12);
-  pAdvertising->start(); // Запуск реклами
+  pAdvertising->start();
   Serial.println("BLE Advertising started. Waiting for connections...");
 
   // Налаштування кнопок
-  pinMode(btnInternal, INPUT_PULLUP); // BOOT кнопка, зазвичай підтягнута до HIGH
-  pinMode(btnExternal, INPUT_PULLUP); // Зовнішня кнопка, також підтягнута до HIGH
+  pinMode(btnInternal, INPUT_PULLUP);
+  pinMode(btnExternal, INPUT_PULLUP);
 
-  // Спроба підключитися до Wi-Fi та MQTT
+  // Спроба підключитися до Wi-Fi та MQTT при старті
   connectToWiFi();
-  if (WiFi.status() == WL_CONNECTED) { // Підключаємось до MQTT тільки якщо Wi-Fi підключений
+  if (WiFi.status() == WL_CONNECTED) {
+    syncTimeWithNTP(); // Синхронізуємо час після успішного підключення до Wi-Fi
     reconnectMqtt();
   }
 }
 
+// ==== Loop функція ====
 void loop() {
-  // Відстежуємо зміну стану підключення BLE для можливих дій
-  if (deviceConnected) {
-    // Щось робити, коли пристрій підключено по BLE
-  }
-  if (!deviceConnected && oldDeviceConnected) {
-    // Щось робити, коли пристрій BLE відключився (наприклад, перепідключення до Wi-Fi/MQTT)
-    oldDeviceConnected = deviceConnected; // Оновлюємо стан
-    // Логіка перепідключення Wi-Fi/MQTT вже ініціюється в onWrite або окремо в loop()
-  }
+  // Відстежуємо зміну стану підключення BLE
   if (deviceConnected && !oldDeviceConnected) {
-    // Щось робити, коли пристрій BLE підключився
-    oldDeviceConnected = deviceConnected; // Оновлюємо стан
+    Serial.println("BLE Client connected. Pausing Wi-Fi/MQTT connection attempts.");
+    oldDeviceConnected = deviceConnected;
+  } else if (!deviceConnected && oldDeviceConnected) {
+    Serial.println("BLE Client disconnected. Resuming Wi-Fi/MQTT connection attempts.");
+    oldDeviceConnected = deviceConnected;
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("BLE disconnected and Wi-Fi not connected. Re-attempting Wi-Fi connection...");
+      connectToWiFi();
+    }
   }
 
   // Автоматичне перепідключення до Wi-Fi, якщо від'єдналися
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Wi-Fi disconnected or not connected. Attempting to connect...");
-    connectToWiFi(); // Ця функція перевірить наявність облікових даних в NVS
+    connectToWiFi();
+    if (WiFi.status() == WL_CONNECTED && !timeSynchronized) {
+      syncTimeWithNTP();
+    }
     delay(5000); // Чекаємо 5 секунд перед наступною спробою Wi-Fi підключення
   }
-
 
   // Автоматичне перепідключення до MQTT, якщо Wi-Fi підключений, але MQTT ні
   if (WiFi.status() == WL_CONNECTED && !client.connected()) {
@@ -363,43 +354,71 @@ void loop() {
     delay(5000); // Чекаємо 5 секунд перед наступною спробою MQTT підключення
   }
 
-  // Обов'язково викликати client.loop() для підтримки MQTT з'єднання та обробки вхідних повідомлень
+  // Автоматична синхронізація часу, якщо Wi-Fi підключений, але час не синхронізовано
+  if (WiFi.status() == WL_CONNECTED && !timeSynchronized) {
+      Serial.println("Wi-Fi connected but time not synchronized. Attempting NTP sync...");
+      syncTimeWithNTP();
+      delay(10000);
+  }
+
+  // Обов'язково викликати client.loop()
   if (client.connected()) {
     client.loop();
   }
 
   // ---------- Обробка BOOT кнопки ----------
   int readingInt = digitalRead(btnInternal);
-  if (readingInt == LOW && lastInternal == HIGH) { // Перехід з HIGH на LOW (натискання)
-    delay(20);  // Дебаунс
-    if (digitalRead(btnInternal) == LOW) { // Перевіряємо, чи кнопка все ще натиснута
+  if (readingInt == LOW && lastInternal == HIGH) {
+    delay(20);
+    if (digitalRead(btnInternal) == LOW) {
       Serial.println("Кнопка BOOT натиснута");
-      if (client.connected()) {
-        client.publish(MQTT_TOPIC_BUTTON, storedMqttPayload); // Публікуємо збережений Client ID
-        Serial.printf("Published '%s' to '%s' topic.\n", storedMqttPayload, MQTT_TOPIC_BUTTON);
+      if (client.connected() && timeSynchronized) { // Публікуємо лише якщо MQTT підключений і час синхронізований
+        struct timeval tv_now;
+        gettimeofday(&tv_now, NULL); // Отримуємо поточну мітку часу з мікросекундами
+
+        // Обчислюємо мітку часу в мілісекундах
+        unsigned long long timestamp_ms = (unsigned long long)tv_now.tv_sec * 1000ULL + (unsigned long long)tv_now.tv_usec / 1000ULL;
+
+        // --- Формуємо рядок з розділювачем ---
+        // Буфер для формування повідомлення. 32 байти для ID + 1 (розділювач) + 20 (timestamp) + 1 (null-термінатор) = ~54 байти.
+        // Беремо з запасом 64 байти.
+        char payloadBuffer[64];
+        // %s для рядка (storedMqttPayload), %llu для unsigned long long (timestamp_ms)
+        snprintf(payloadBuffer, sizeof(payloadBuffer), "%s;%llu", storedMqttPayload, timestamp_ms);
+
+        client.publish(MQTT_TOPIC_BUTTON, payloadBuffer);
+        Serial.printf("Published with delimiter: '%s' to '%s' topic.\n", payloadBuffer, MQTT_TOPIC_BUTTON);
       } else {
-        Serial.println("MQTT Not connected, cannot publish button event.");
+        Serial.println("MQTT Not connected or time not synchronized, cannot publish button event.");
       }
     }
   }
-  lastInternal = readingInt; // Оновлюємо останній стан кнопки
+  lastInternal = readingInt;
 
   // ---------- Обробка Зовнішньої кнопки ----------
   int readingExt = digitalRead(btnExternal);
-  if (readingExt == LOW && lastExternal == HIGH) { // Перехід з HIGH на LOW (натискання)
-    delay(20);  // Дебаунс
-    if (digitalRead(btnExternal) == LOW) { // Перевіряємо, чи кнопка все ще натиснута
+  if (readingExt == LOW && lastExternal == HIGH) {
+    delay(20);
+    if (digitalRead(btnExternal) == LOW) {
       Serial.println("Зовнішня кнопка натиснута");
-      if (client.connected()) {
-        client.publish(MQTT_TOPIC_BUTTON, storedMqttPayload); // Публікуємо збережений Client ID
-        Serial.printf("Published '%s' to '%s' topic.\n", storedMqttPayload, MQTT_TOPIC_BUTTON);
+      if (client.connected() && timeSynchronized) { // Публікуємо лише якщо MQTT підключений і час синхронізований
+        struct timeval tv_now;
+        gettimeofday(&tv_now, NULL);
+
+        unsigned long long timestamp_ms = (unsigned long long)tv_now.tv_sec * 1000ULL + (unsigned long long)tv_now.tv_usec / 1000ULL;
+
+        // --- Формуємо рядок з розділювачем ---
+        char payloadBuffer[64];
+        snprintf(payloadBuffer, sizeof(payloadBuffer), "%s;%llu", storedMqttPayload, timestamp_ms);
+
+        client.publish(MQTT_TOPIC_BUTTON, payloadBuffer);
+        Serial.printf("Published with delimiter: '%s' to '%s' topic.\n", payloadBuffer, MQTT_TOPIC_BUTTON);
       } else {
-        Serial.println("MQTT Not connected, cannot publish button event.");
+        Serial.println("MQTT Not connected or time not synchronized, cannot publish button event.");
       }
     }
   }
-  lastExternal = readingExt; // Оновлюємо останній стан кнопки
+  lastExternal = readingExt;
 
-  // Короткий delay, щоб не завантажувати процесор повністю, якщо немає інших активних операцій
   delay(100);
 }
