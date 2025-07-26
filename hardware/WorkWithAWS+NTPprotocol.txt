@@ -1,0 +1,400 @@
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <Preferences.h>
+
+// ==== Включення бібліотек для NTP (SNTP) ====
+#include <time.h>        // Для struct tm
+#include <sys/time.h>    // Для gettimeofday (ВАЖЛИВО: для мікросекундної точності)
+#include "esp_sntp.h"    // Основний заголовок для SNTP
+
+// ==== Додано для AWS IoT Core (TLS/SSL) ====
+#include <WiFiClientSecure.h> // Нова бібліотека для захищеного з'єднання
+#include <LittleFS.h>         // Або #include <FS.h> для SPIFFS
+
+// ==== BLE UUIDs (Можна згенерувати свої унікальні на https://www.uuidgenerator.net/version4) ====
+#define SERVICE_UUID_STR                     "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SSID_CHARACTERISTIC_UUID_STR         "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define PASS_CHARACTERISTIC_UUID_STR         "ae21cf29-9e20-4107-a3a8-b63de42145e1"
+#define MQTT_PAYLOAD_CHARACTERISTIC_UUID_STR "f8f4a13d-5e26-4d2d-94d7-4c12a7f5b4d7"
+
+const BLEUUID SERVICE_UUID                 = BLEUUID(SERVICE_UUID_STR);
+const BLEUUID SSID_CHARACTERISTIC_UUID     = BLEUUID(SSID_CHARACTERISTIC_UUID_STR);
+const BLEUUID PASS_CHARACTERISTIC_UUID     = BLEUUID(PASS_CHARACTERISTIC_UUID_STR);
+const BLEUUID MQTT_PAYLOAD_CHARACTERISTIC_UUID = BLEUUID(MQTT_PAYLOAD_CHARACTERISTIC_UUID_STR);
+
+// ==== BLE Глобальні змінні ====
+BLECharacteristic *pSSIDCharacteristic;
+BLECharacteristic *pPassCharacteristic;
+BLECharacteristic *pMQTTPayloadCharacteristic;
+bool deviceConnected = false;
+char* ssid_str = nullptr;
+char* pass_str = nullptr;
+char* mqtt_payload_str = nullptr;
+
+// ==== WiFi & MQTT Налаштування ====
+// *** Зміни для AWS IoT Core ***
+const int mqttPort = 8883; // Порт для MQTT через TLS на AWS IoT Core
+const char* MQTT_SERVER = "a1mmkv9848djnl-ats.iot.us-east-1.amazonaws.com"; // Вставте свій AWS IoT Endpoint
+// MQTT_USERNAME та MQTT_AIO_KEY більше не потрібні для AWS IoT Core з автентифікацією по сертифікатах
+const char* MQTT_TOPIC_BUTTON = "vmishchenko/feeds/esp32-button"; // Топік для публікації кнопки
+
+// ==== Змінні для AWS IoT Core сертифікатів ====
+// Ці файли повинні бути завантажені на файлову систему ESP32 (LittleFS/SPIFFS)
+const char* AWS_CERT_CA = "/AmazonRootCA1.pem";
+const char* AWS_CERT_CRT = "/certificate.pem.crt"; // Змініть на реальне ім'я вашого сертифіката
+const char* AWS_CERT_PRIVATE = "/private.pem.key"; // Змініть на реальне ім'я вашого приватного ключа
+
+
+// *** Змінено тип клієнта для захищеного з'єднання ***
+WiFiClientSecure espClient;
+PubSubClient client(espClient);
+
+Preferences preferences; // Для збереження конфігурації у NVS
+
+// ==== SNTP Налаштування ====
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 10800; // GMT+3 для Києва/України (3 години * 3600 секунд/година)
+const int   daylightOffset_sec = 0; // Немає переходу на літній час (для України)
+bool timeSynchronized = false;
+
+// ==== Кнопки (визначення пінів) ====
+const int btnInternal = 9; // Внутрішня кнопка на ESP32-C3
+const int btnExternal = 10; // Зовнішня кнопка
+int lastInternal = HIGH;
+int lastExternal = HIGH;
+
+// =======================================================
+//                   SNTP Функції
+// =======================================================
+void time_sync_notification_cb(struct timeval *tv) {
+    Serial.printf("Time synchronized with NTP server: %ld.%06ld\n", tv->tv_sec, tv->tv_usec);
+    timeSynchronized = true;
+}
+
+void initSNTP() {
+    Serial.println("Initializing SNTP...");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, ntpServer);
+    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+    sntp_init();
+
+    // Чекаємо синхронізації часу
+    int retry_count = 0;
+    while (!timeSynchronized && retry_count < 100) { // Чекаємо до 100 * 500мс = 50 секунд
+        Serial.print(".");
+        delay(500);
+        retry_count++;
+    }
+    Serial.println();
+
+    if (timeSynchronized) {
+        // Встановлюємо часовий пояс
+        setenv("TZ", "EET-3EEST,M3.5.0/3,M10.5.0/4", 1); // Часовий пояс для України: EET (Eastern European Time), GMT+2, DST not applicable in 2025+
+        tzset();
+        Serial.println("Timezone set to EET (GMT+3).");
+    } else {
+        Serial.println("Failed to synchronize time with NTP server.");
+    }
+}
+
+// =======================================================
+//                   BLE Функції
+// =======================================================
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+        Serial.println("BLE Device connected");
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+        BLEDevice::startAdvertising(); // Перезапустити рекламу після відключення
+        Serial.println("BLE Device disconnected. Starting advertising again.");
+    }
+};
+
+class MyCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+        std::string value = pCharacteristic->getValue();
+        if (value.length() > 0) {
+            Serial.print("Received value: ");
+            for (int i = 0; i < value.length(); i++) {
+                Serial.print(value[i]);
+            }
+            Serial.println();
+
+            if (pCharacteristic == pSSIDCharacteristic) {
+                if (ssid_str) free(ssid_str);
+                ssid_str = (char*)malloc(value.length() + 1);
+                strcpy(ssid_str, value.c_str());
+                Serial.printf("SSID saved: %s\n", ssid_str);
+                preferences.putString("ssid", ssid_str);
+            } else if (pCharacteristic == pPassCharacteristic) {
+                if (pass_str) free(pass_str);
+                pass_str = (char*)malloc(value.length() + 1);
+                strcpy(pass_str, value.c_str());
+                Serial.printf("Password saved (masked): %s\n", "****");
+                preferences.putString("pass", pass_str);
+            } else if (pCharacteristic == pMQTTPayloadCharacteristic) {
+                if (mqtt_payload_str) free(mqtt_payload_str);
+                mqtt_payload_str = (char*)malloc(value.length() + 1);
+                strcpy(mqtt_payload_str, value.c_str());
+                Serial.printf("MQTT Client ID saved: %s\n", mqtt_payload_str);
+                preferences.putString("mqtt_payload", mqtt_payload_str);
+            }
+        }
+    }
+};
+
+void setupBLE() {
+    BLEDevice::init("ESP32-C3-BrainRing");
+    BLEServer *pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+
+    pSSIDCharacteristic = pService->createCharacteristic(
+                                         SSID_CHARACTERISTIC_UUID,
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+    pSSIDCharacteristic->setCallbacks(new MyCallbacks());
+
+    pPassCharacteristic = pService->createCharacteristic(
+                                         PASS_CHARACTERISTIC_UUID,
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+    pPassCharacteristic->setCallbacks(new MyCallbacks());
+
+    pMQTTPayloadCharacteristic = pService->createCharacteristic(
+                                         MQTT_PAYLOAD_CHARACTERISTIC_UUID,
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+    pMQTTPayloadCharacteristic->setCallbacks(new MyCallbacks());
+
+    pService->start();
+    BLEDevice::startAdvertising();
+    Serial.println("BLE advertising started.");
+}
+
+// =======================================================
+//                   WiFi Функції
+// =======================================================
+void connectWifi() {
+  preferences.begin("wifi-config", false);
+  String ssid = preferences.getString("ssid", "");
+  String pass = preferences.getString("pass", "");
+  preferences.end();
+
+  if (ssid.length() == 0 || pass.length() == 0) {
+    Serial.println("No WiFi credentials found in NVS. Please configure via BLE.");
+    return;
+  }
+
+  Serial.printf("Connecting to WiFi: %s\n", ssid.c_str());
+  WiFi.begin(ssid.c_str(), pass.c_str());
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) { // Чекаємо до 20 * 1000мс = 20 секунд
+    delay(1000);
+    Serial.print(".");
+    attempts++;
+  }
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("✅ WiFi Connected!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+    // Після підключення до WiFi, ініціалізуємо SNTP
+    initSNTP();
+  } else {
+    Serial.println("❌ WiFi Connection Failed!");
+    // Очистити збережені облікові дані WiFi, щоб дозволити перевизначення через BLE
+    preferences.begin("wifi-config", false);
+    preferences.remove("ssid");
+    preferences.remove("pass");
+    preferences.end();
+  }
+}
+
+// =======================================================
+//                   MQTT Функції
+// =======================================================
+
+// *** Функція для завантаження сертифікатів ***
+bool loadCertificates() {
+  Serial.println("Loading certificates...");
+  // Виберіть LittleFS.begin(true) або SPIFFS.begin(true)
+  if (!LittleFS.begin(true)) {
+    Serial.println("Failed to mount LittleFS file system");
+    return false;
+  }
+
+  // Завантаження CA сертифіката
+  File ca = LittleFS.open(AWS_CERT_CA, "r");
+  if (!ca) {
+    Serial.println("Failed to open CA certificate file");
+    return false;
+  }
+  espClient.loadCACert(ca, ca.size());
+  ca.close();
+  Serial.println("CA certificate loaded.");
+
+  // Завантаження сертифіката пристрою
+  File cert = LittleFS.open(AWS_CERT_CRT, "r");
+  if (!cert) {
+    Serial.println("Failed to open device certificate file");
+    return false;
+  }
+  espClient.loadCertificate(cert, cert.size());
+  cert.close();
+  Serial.println("Device certificate loaded.");
+
+  // Завантаження приватного ключа
+  File privateKey = LittleFS.open(AWS_CERT_PRIVATE, "r");
+  if (!privateKey) {
+    Serial.println("Failed to open private key file");
+    return false;
+  }
+  espClient.loadPrivateKey(privateKey, privateKey.size());
+  privateKey.close();
+  Serial.println("Private key loaded.");
+
+  return true;
+}
+
+
+void reconnectMqtt() {
+  preferences.begin("wifi-config", false);
+  String storedMqttPayload = preferences.getString("mqtt_payload", ""); // Це буде Client ID
+  preferences.end();
+
+  if (storedMqttPayload.length() == 0) {
+    Serial.println("No MQTT Client ID found in NVS. Cannot connect to MQTT. Please configure via BLE.");
+    return;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi not connected, cannot connect to MQTT.");
+    return;
+  }
+
+  // *** Завантажуємо сертифікати перед спробою підключення MQTT ***
+  if (!loadCertificates()) {
+    Serial.println("Failed to load all certificates. Cannot connect to MQTT.");
+    return;
+  }
+
+  client.setServer(MQTT_SERVER, mqttPort); // Встановлюємо сервер та порт
+
+  Serial.print("🔄 Connecting to MQTT server: ");
+  Serial.print(MQTT_SERVER);
+  Serial.print(" as client: ");
+  Serial.println(storedMqttPayload); // Використовуємо збережений Client ID
+
+  unsigned long startTime = millis();
+  while (!client.connected() && (millis() - startTime < 30000)) { // Макс 30 секунд спроб
+    // *** Для AWS IoT Core з сертифікатами: client.connect() приймає лише Client ID ***
+    if (client.connect(storedMqttPayload.c_str())) {
+      Serial.println("✅ MQTT connected to AWS IoT!");
+      // Після успішного підключення до MQTT, можна підписатися на топіки
+      // Наприклад: client.subscribe("vmishchenko/commands");
+    } else {
+      Serial.printf("❌ MQTT connection failed, rc=%d. Retrying in 5 seconds...\n", client.state());
+      delay(5000);
+    }
+  }
+  if (!client.connected()) {
+    Serial.println("❌ Failed to connect to MQTT after multiple attempts.");
+  }
+}
+
+// =======================================================
+//                   Setup & Loop
+// =======================================================
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(btnInternal, INPUT_PULLUP);
+  pinMode(btnExternal, INPUT_PULLUP);
+
+  setupBLE();
+  connectWifi();
+}
+
+void loop() {
+  // Перевіряємо підключення Wi-Fi. Якщо відключився, спробувати перепідключитись.
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi disconnected. Attempting to reconnect...");
+    connectWifi();
+    delay(5000); // Даємо час на підключення
+    return; // Пропускаємо решту циклу, поки WiFi не підключиться
+  }
+
+  // Перевіряємо підключення MQTT. Якщо відключився, спробувати перепідключитись.
+  if (!client.connected()) {
+    Serial.println("MQTT disconnected. Attempting to reconnect...");
+    reconnectMqtt();
+    delay(5000); // Даємо час на підключення
+    return; // Пропускаємо решту циклу, поки MQTT не підключиться
+  }
+
+  // Викликаємо client.loop() регулярно для підтримки MQTT з'єднання
+  client.loop();
+
+  // --- Обробка Внутрішньої кнопки ---
+  int readingInt = digitalRead(btnInternal);
+  if (readingInt == LOW && lastInternal == HIGH) {
+    delay(20); // Антидребезг
+    if (digitalRead(btnInternal) == LOW) {
+      Serial.println("Внутрішня кнопка натиснута");
+      if (client.connected() && timeSynchronized) { // Публікуємо лише якщо MQTT підключений і час синхронізований
+        struct timeval tv_now;
+        gettimeofday(&tv_now, NULL);
+
+        unsigned long long timestamp_ms = (unsigned long long)tv_now.tv_sec * 1000ULL + (unsigned long long)tv_now.tv_usec / 1000ULL;
+
+        // --- Формуємо рядок з розділювачем ---
+        char payloadBuffer[64];
+        snprintf(payloadBuffer, sizeof(payloadBuffer), "%s;%llu", preferences.getString("mqtt_payload", "").c_str(), timestamp_ms);
+
+        client.publish(MQTT_TOPIC_BUTTON, payloadBuffer);
+        Serial.printf("Published with delimiter: '%s' to '%s' topic.\n", payloadBuffer, MQTT_TOPIC_BUTTON);
+      } else {
+        Serial.println("MQTT Not connected or time not synchronized, cannot publish button event.");
+      }
+    }
+  }
+  lastInternal = readingInt;
+
+  // ---------- Обробка Зовнішньої кнопки ----------
+  int readingExt = digitalRead(btnExternal);
+  if (readingExt == LOW && lastExternal == HIGH) {
+    delay(20);
+    if (digitalRead(btnExternal) == LOW) {
+      Serial.println("Зовнішня кнопка натиснута");
+      if (client.connected() && timeSynchronized) { // Публікуємо лише якщо MQTT підключений і час синхронізований
+        struct timeval tv_now;
+        gettimeofday(&tv_now, NULL);
+
+        unsigned long long timestamp_ms = (unsigned long long)tv_now.tv_sec * 1000ULL + (unsigned long long)tv_now.tv_usec / 1000ULL;
+
+        // --- Формуємо рядок з розділювачем ---
+        char payloadBuffer[64];
+        snprintf(payloadBuffer, sizeof(payloadBuffer), "%s;%llu", preferences.getString("mqtt_payload", "").c_str(), timestamp_ms);
+
+        client.publish(MQTT_TOPIC_BUTTON, payloadBuffer);
+        Serial.printf("Published with delimiter: '%s' to '%s' topic.\n", payloadBuffer, MQTT_TOPIC_BUTTON);
+      } else {
+        Serial.println("MQTT Not connected or time not synchronized, cannot publish button event.");
+      }
+    }
+  }
+  lastExternal = readingExt;
+
+  delay(100); // Невелика затримка для стабільності
+}

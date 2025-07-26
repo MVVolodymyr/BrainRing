@@ -931,6 +931,7 @@ input[type="number"] {
     </div>
 </div>
 
+<!-- Audio Elements -->
 <audio id="soundG" src="audio/mixkit-car-horn-718.wav"></audio>
 <audio id="soundR" src="audio/mixkit-cartoon-blow-impact-2654.wav"></audio>
 <audio id="soundB" src="audio/mixkit-impact-of-a-blow-2150.wav"></audio>
@@ -942,15 +943,15 @@ input[type="number"] {
 
 <script>
     let lastClickTime = 0;
-    // let clickTimes = []; // No longer needed
+    let clickTimes = [];
     let listening = true;
     let timer;
     let countdown;
     let isMuted = false;
     let warningTimeout;
 
-    // New array to store click events with timestamps
-    let buttonPressEvents = [];
+
+
 
     let clickedTeams = {
         green: false,
@@ -970,25 +971,15 @@ input[type="number"] {
       pink: "Pink Team"
     };
 
-    // Mapping for team to its original element ID for cloning purposes
-    const teamElementIdMap = {
-        green: "element1",
-        red: "element2",
-        blue: "element3",
-        white: "element4",
-        yellow: "element5",
-        pink: "element6"
-    };
-
     document.addEventListener('keydown', (event) => {
         handleTeamClick(event.key);
     });
-
-    // Modified handleTeamClick to use buttonPressEvents and renderOutput
     function handleTeamClick(key) {
         if (!listening) return;
 
+        const currentTime = new Date().getTime();
         const pressedKey = key.toLowerCase();
+
         const keyMap = {
             g: { team: "green", elementId: "element1" }, п: { team: "green", elementId: "element1" },
             b: { team: "blue", elementId: "element3" }, и: { team: "blue", elementId: "element3" },
@@ -999,126 +990,88 @@ input[type="number"] {
         };
 
         const mapping = keyMap[pressedKey];
-        if (!mapping) return; // Not a relevant key
+        if (!mapping || clickedTeams[mapping.team]) return;
 
-        if (clickedTeams[mapping.team]) {
-            console.log(`Team ${teamNames[mapping.team]} already clicked this round via keyboard. Ignoring.`);
-            return; // Ignore if already clicked
-        }
-
-        const currentTime = new Date().getTime(); // Timestamp for local key press
-
-        // Add the new click event
-        buttonPressEvents.push({
-            team: mapping.team,
-            timestamp: currentTime,
-            elementId: mapping.elementId
-        });
-
-        // Mark team as clicked
         clickedTeams[mapping.team] = true;
         document.getElementById(`sound${mapping.team.charAt(0).toUpperCase()}`).play();
 
-        // Sort events by timestamp and re-render
-        buttonPressEvents.sort((a, b) => a.timestamp - b.timestamp);
-        renderOutput();
-    }
-
-    // New function to render the output based on sorted buttonPressEvents
-    function renderOutput() {
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = ""; // Clear existing output
-
-        if (buttonPressEvents.length === 0) {
-            outputDiv.innerHTML = "<p>Lets the battle begin!</p>";
-            return;
+        let timeText = "First";
+        if (lastClickTime !== 0) {
+            const timeDifference = (currentTime - lastClickTime) / 1000;
+            const formattedTime = timeDifference.toFixed(2).replace('.', ',');
+            timeText = `+ <strong style='color:red;'>${formattedTime} s</strong>`;
+            clickTimes.push(timeDifference);
         }
 
-        const firstClickTimestamp = buttonPressEvents.length > 0 ? buttonPressEvents[0].timestamp : 0;
+        lastClickTime = currentTime;
 
-        buttonPressEvents.forEach((event, index) => {
-            const team = event.team;
-            const elementId = event.elementId;
-            const teamDisplay = teamNames[team]; // Use mapped name
+        const element = document.getElementById(mapping.elementId);
+        const cloned = element.cloneNode(true);
+        cloned.style.display = 'block';
 
-            let timeText = "First";
-            if (index > 0) {
-                const timeDifference = (event.timestamp - firstClickTimestamp) / 1000;
-                const formattedTime = timeDifference.toFixed(2).replace('.', ',');
-                timeText = `+ <strong style='color:red;'>${formattedTime} s</strong>`;
-            }
+        const title = document.createElement('div');
+        title.innerHTML = `<strong style="color:${mapping.team};">${teamNames[mapping.team]} clicked</strong> | ${timeText}`;
 
-            // Get original element for cloning structure, using the consistent map
-            const originalElement = document.getElementById(teamElementIdMap[team]);
-            if (!originalElement) {
-                console.warn(`Original element with ID ${teamElementIdMap[team]} not found for team ${team}.`);
-                return;
-            }
+        cloned.innerHTML = '';
+        const inlineWrap = document.createElement('div');
+        inlineWrap.style.display = 'flex';
+        inlineWrap.style.alignItems = 'center';
+        inlineWrap.style.justifyContent = 'space-between';
+        inlineWrap.style.flexWrap = 'wrap';
+        inlineWrap.style.gap = '10px';
 
-            const cloned = originalElement.cloneNode(true);
-            cloned.style.display = 'block';
+        inlineWrap.appendChild(title);
 
-            const title = document.createElement('div');
-            title.innerHTML = `<strong style="color:${team};">${teamDisplay} clicked</strong> | ${timeText}`;
+        const buttonGroup = document.createElement('div');
+        buttonGroup.className = 'button-group';
 
-            cloned.innerHTML = ''; // Clear cloned content before adding new
-            const inlineWrap = document.createElement('div');
-            inlineWrap.style.display = 'flex';
-            inlineWrap.style.alignItems = 'center';
-            inlineWrap.style.justifyContent = 'space-between';
-            inlineWrap.style.flexWrap = 'wrap';
-            inlineWrap.style.gap = '10px';
+        ['+1', '+2', '+3'].forEach((label, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'circle-button';
+            btn.textContent = label;
 
-            inlineWrap.appendChild(title);
+            btn.addEventListener('click', () => {
+                const roundValue = parseInt(document.getElementById('roundValue').textContent);
+                const questionValue = parseInt(document.getElementById('questionValue').textContent);
 
-            const buttonGroup = document.createElement('div');
-            buttonGroup.className = 'button-group';
+                let tableId = '';
+                if (roundValue === 2) tableId = 'tableSimple';
+                else if (roundValue === 3) tableId = 'tableHard';
+                else if (roundValue === 4) tableId = 'tableCap';
+                else return;
 
-            // Add point buttons, similar to original handleTeamClick
-            ['+1', '+2', '+3'].forEach((label, btnIndex) => {
-                const btn = document.createElement('button');
-                btn.className = 'circle-button';
-                btn.textContent = label;
+                const table = document.getElementById(tableId);
+                if (!table) return;
 
-                btn.addEventListener('click', () => {
-                    const roundValue = parseInt(document.getElementById('roundValue').textContent);
-                    const questionValue = parseInt(document.getElementById('questionValue').textContent);
+                const rowIndex = questionValue - 1;
+                const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
+                const colIndex = teamOrder.indexOf(mapping.team);
+                if (colIndex === -1) return;
 
-                    let tableId = '';
-                    if (roundValue === 2) tableId = 'tableSimple';
-                    else if (roundValue === 3) tableId = 'tableHard';
-                    else if (roundValue === 4) tableId = 'tableCap';
-                    else return;
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+                const sumRowIndex = rows.length - 1;
+                if (rowIndex >= sumRowIndex) return;
 
-                    const table = document.getElementById(tableId);
-                    if (!table) return;
+                const targetRow = rows[rowIndex];
+                const input = targetRow.querySelectorAll('input')[colIndex];
+                if (!input) return;
 
-                    const rowIndex = questionValue - 1;
-                    const teamOrder = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
-                    const colIndex = teamOrder.indexOf(team); // Use the 'team' from the event
-                    if (colIndex === -1) return;
-
-                    const tbody = table.querySelector('tbody');
-                    const rows = tbody.querySelectorAll('tr');
-                    const sumRowIndex = rows.length - 1;
-                    if (rowIndex >= sumRowIndex) return;
-
-                    const targetRow = rows[rowIndex];
-                    const input = targetRow.querySelectorAll('input')[colIndex];
-                    if (!input) return;
-
-                    const current = parseFloat(input.value) || 0;
-                    input.value = current + (btnIndex + 1);
-                    input.dispatchEvent(new Event('input'));
-                });
-                buttonGroup.appendChild(btn);
+                const current = parseFloat(input.value) || 0;
+                input.value = current + (index + 1);
+                input.dispatchEvent(new Event('input'));
             });
 
-            inlineWrap.appendChild(buttonGroup);
-            cloned.appendChild(inlineWrap);
-            outputDiv.appendChild(cloned);
+            buttonGroup.appendChild(btn);
         });
+
+        inlineWrap.appendChild(buttonGroup);
+        cloned.appendChild(inlineWrap);
+
+        cloned.classList.add('element');
+        document.getElementById('output').appendChild(cloned);
     }
+
 
 
     function saveState() {
@@ -1178,10 +1131,10 @@ input[type="number"] {
     function resetOutput() {
         document.getElementById('output').innerHTML = "<p>Lets the battle begin!</p>";
         document.getElementById('timerDisplay').innerText = "";
-        // Clear the button press events
-        buttonPressEvents = [];
+        lastClickTime = 0;
+        clickTimes = [];
 
-        // Reset all timers
+        // Скидаємо всі таймери
         clearTimeout(timer);
         clearInterval(countdown);
         clearTimeout(warningTimeout);
@@ -1192,16 +1145,16 @@ input[type="number"] {
         document.getElementById('timer2Btn').disabled = false;
         document.getElementById('timer3Btn').disabled = false;
 
-        // Reset clickedTeams for a new round
+
         for (let key in clickedTeams) clickedTeams[key] = false;
 
-        // Stop all sounds
+        // Зупиняємо всі звуки
         document.querySelectorAll('audio').forEach(audio => {
             audio.pause();
             audio.currentTime = 0;
         });
 
-        // Show hidden elements (if they exist)
+        // Показати приховані елементи (якщо вони існують)
         const gameContainer = document.getElementById('gameContainer');
         if (gameContainer) gameContainer.style.display = 'block';
         const questionContainer = document.getElementById('questionContainer');
@@ -1209,7 +1162,7 @@ input[type="number"] {
         const scoreTable = document.getElementById('scoreTable');
         if (scoreTable) scoreTable.style.display = 'block';
 
-        // Hide Retry, if it exists
+        // Сховати Retry, якщо він існує
         const retryBtn = document.getElementById('retryBtn');
         if (retryBtn) retryBtn.style.display = 'none';
     }
@@ -1883,7 +1836,7 @@ input[type="number"] {
 
     function startMqtt() {
     const ADAFRUIT_USERNAME = "vmishchenko";
-    const ADAFRUIT_IO_KEY = "";
+    const ADAFRUIT_IO_KEY = "aio_hYwv68ztp0y0FpmvqtA38dQU8tGB";
     const MQTT_URL = `wss://io.adafruit.com/mqtt`;
     const topic = `${ADAFRUIT_USERNAME}/feeds/esp32-button`;
 
@@ -1900,45 +1853,23 @@ input[type="number"] {
         });
     });
 
-    // Modified MQTT message handler
     client.on('message', (topic, message) => {
-        const msg = message.toString().trim(); // Keep original casing for now to parse
-        const msgParts = msg.split(';');
-
-        if (msgParts.length !== 2) {
-            console.warn(`⚠️ Unexpected MQTT message format: ${msg}`);
-            return;
+        const msg = message.toString().trim().toLowerCase();
+        const map = {
+            blue: "b",
+            red: "r",
+            green: "g",
+            pink: "p",
+            yellow: "y",
+            white: "w"
+        };
+        const key = map[msg];
+        if (key) {
+            console.log(`👉 Received: ${msg}, triggering key: ${key}`);
+            handleTeamClick(key);
+        } else {
+            console.warn(`⚠️ Unknown message: ${msg}`);
         }
-
-        const teamNameFromMqtt = msgParts[0].toLowerCase(); // Convert to lowercase for map lookup
-        const timestampMs = parseInt(msgParts[1], 10);
-
-        // Ensure the team name is one of our recognized teams
-        const recognizedTeams = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
-        if (!recognizedTeams.includes(teamNameFromMqtt)) {
-            console.warn(`⚠️ Unrecognized team name received via MQTT: ${msgParts[0]}`);
-            return;
-        }
-
-        if (clickedTeams[teamNameFromMqtt]) {
-            console.log(`Team ${teamNames[teamNameFromMqtt]} already clicked this round. Ignoring duplicate MQTT message.`);
-            return; // Ignore if already clicked
-        }
-
-        // Add the new click event
-        buttonPressEvents.push({
-            team: teamNameFromMqtt,
-            timestamp: timestampMs,
-            elementId: teamElementIdMap[teamNameFromMqtt] // Use the consistent map
-        });
-
-        // Mark team as clicked
-        clickedTeams[teamNameFromMqtt] = true;
-        document.getElementById(`sound${teamNameFromMqtt.charAt(0).toUpperCase()}`).play(); // Play sound based on the team
-
-        // Sort events by timestamp and re-render
-        buttonPressEvents.sort((a, b) => a.timestamp - b.timestamp);
-        renderOutput();
     });
 
     client.on('error', err => console.error("❌ MQTT Error:", err));
