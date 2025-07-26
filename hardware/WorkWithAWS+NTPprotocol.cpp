@@ -145,6 +145,9 @@ class MyCallbacks: public BLECharacteristicCallbacks {
                 strcpy(mqtt_payload_str, value.c_str());
                 Serial.printf("MQTT Client ID saved: %s\n", mqtt_payload_str);
                 preferences.putString("mqtt_payload", mqtt_payload_str);
+                
+                // Додаткова діагностика
+                Serial.printf("Перевірка збереження: '%s'\n", preferences.getString("mqtt_payload", "").c_str());
             }
         }
     }
@@ -184,10 +187,8 @@ void setupBLE() {
 //                   WiFi Функції
 // =======================================================
 void connectWifi() {
-  preferences.begin("wifi-config", false);
   String ssid = preferences.getString("ssid", "");
   String pass = preferences.getString("pass", "");
-  preferences.end();
 
   if (ssid.length() == 0 || pass.length() == 0) {
     Serial.println("No WiFi credentials found in NVS. Please configure via BLE.");
@@ -269,9 +270,7 @@ bool loadCertificates() {
 
 
 void reconnectMqtt() {
-  preferences.begin("wifi-config", false);
   String storedMqttPayload = preferences.getString("mqtt_payload", ""); // Це буде Client ID
-  preferences.end();
 
   if (storedMqttPayload.length() == 0) {
     Serial.println("No MQTT Client ID found in NVS. Cannot connect to MQTT. Please configure via BLE.");
@@ -321,6 +320,16 @@ void setup() {
 
   pinMode(btnInternal, INPUT_PULLUP);
   pinMode(btnExternal, INPUT_PULLUP);
+
+  // Ініціалізуємо preferences
+  preferences.begin("wifi-config", false);
+
+  // Діагностика збережених даних
+  Serial.println("=== Діагностика збережених даних ===");
+  Serial.printf("SSID: '%s'\n", preferences.getString("ssid", "").c_str());
+  Serial.printf("Password: '%s'\n", preferences.getString("pass", "").c_str());
+  Serial.printf("MQTT Client ID: '%s'\n", preferences.getString("mqtt_payload", "").c_str());
+  Serial.println("=====================================");
 
   setupBLE();
   connectWifi();
