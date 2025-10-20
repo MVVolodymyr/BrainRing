@@ -801,6 +801,7 @@ input[type="number"] {
                 <label for="csvUpload" class="btn btn-gray btn-small">Upload CSV</label>
                 <button class="btn btn-green btn-small" onclick="loadCSV()">Load Questions</button>
                 <button class="btn btn-red btn-small" onclick="clearCSV()">Clear Questions</button>
+                <button class="btn btn-gray btn-small" onclick="likeCurrentQuestion()" aria-label="Like current question">❤ Like</button>
                 <button class="btn btn-gray btn-small" onclick="prevQuestion()">
                     <img src="icon/angle-left.svg" alt="Previous" width="20" height="15">
                 </button>
@@ -843,6 +844,7 @@ input[type="number"] {
             <div class="tab" data-tab="tab3">Hard question round</div>
             <div class="tab" data-tab="tab4">Captains round</div>
             <div class="tab" data-tab="tab5">Statistics</div>
+            <div class="tab" data-tab="tab6">Favorites</div>
 
         </div>
 
@@ -921,6 +923,23 @@ input[type="number"] {
                     <th>Correct answers</th>
                     <th>Incorrect answers</th>
                     <th>Correct in %</th>
+                </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tab-content" id="tab6">
+            <h2>Favorites</h2>
+            <div class="button-group" style="justify-content: flex-start; margin-bottom: 10px;">
+                <button class="btn btn-red btn-small" onclick="clearFavorites()">Clear Favorites</button>
+                <button class="btn btn-gray btn-small" onclick="copyFavorites()">Copy</button>
+            </div>
+            <table id="favoritesTable">
+                <thead>
+                <tr>
+                    <th>Question</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -1445,6 +1464,8 @@ input[type="number"] {
               applyConditionalFormattingCap?.();
             }  else if (tab.dataset.tab === "tab5") {
                 generateStatistics();
+            } else if (tab.dataset.tab === "tab6") {
+                renderFavorites();
             }
       });
     });
@@ -1656,7 +1677,18 @@ input[type="number"] {
 }
     function toggleSettingsMenu() {
             const menu = document.getElementById('settingsMenu');
-            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            if (!menu) return;
+            const isOpening = menu.style.display === 'none' || !menu.style.display;
+            if (isOpening) {
+                // Sync checkbox states from current visibility classes
+                const checkboxes = document.querySelectorAll('#settingsMenu input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    const team = cb.dataset.team;
+                    const visible = !document.body.classList.contains('hide-' + team);
+                    cb.checked = visible;
+                });
+            }
+            menu.style.display = isOpening ? 'block' : 'none';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1691,6 +1723,10 @@ input[type="number"] {
                 // === КІНЕЦЬ: Відновлення стану чекбоксів ===
 
                 updateDisplayedTeamNames();
+                // Рендеримо обрані питання при завантаженні
+                renderFavorites();
+                // Ініціалізуємо MQTT після завантаження
+                startMqtt?.();
         });
         function generateStatistics() {
             const tbody = document.querySelector("#statisticsTable tbody");
@@ -1757,6 +1793,100 @@ input[type="number"] {
                 menu.style.display = 'none';
             }
         });
+
+    // ===== Favorites (Liked Questions) =====
+    function loadFavorites() {
+        try {
+            const raw = localStorage.getItem('favoriteQuestions');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.warn('Failed to load favorites:', e);
+            return [];
+        }
+    }
+
+    function saveFavorites(items) {
+        try {
+            localStorage.setItem('favoriteQuestions', JSON.stringify(items));
+        } catch (e) {
+            console.warn('Failed to save favorites:', e);
+        }
+    }
+
+    function likeCurrentQuestion() {
+        const number = (document.getElementById('qNumber')?.textContent || '').trim();
+        const text = (document.getElementById('qText')?.textContent || '').trim();
+        if (!number || number === '-' || !text || text === 'No question loaded') {
+            alert('No question to like.');
+            return;
+        }
+
+        const favorites = loadFavorites();
+        const exists = favorites.some(q => String(q.number) === String(number) && q.text === text);
+        if (!exists) {
+            favorites.push({ number, text });
+            saveFavorites(favorites);
+            renderFavorites();
+        }
+    }
+
+    function renderFavorites() {
+        const tbody = document.querySelector('#favoritesTable tbody');
+        if (!tbody) return;
+        const favorites = loadFavorites();
+        tbody.innerHTML = '';
+        favorites.forEach(item => {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.textContent = `${item.number}, ${item.text}`;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function clearFavorites() {
+        const ok = confirm('Are you sure you want to clear all liked questions?');
+        if (!ok) return;
+        localStorage.removeItem('favoriteQuestions');
+        renderFavorites();
+    }
+
+    function copyFavorites() {
+        const favorites = loadFavorites();
+        if (!favorites.length) {
+            alert('No favorites to copy.');
+            return;
+        }
+        const text = favorites.map(item => `${item.number}, ${item.text}`).join('\n');
+
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert('Favorites copied to clipboard.'))
+                .catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            alert('Favorites copied to clipboard.');
+        } catch (e) {
+            alert('Failed to copy favorites.');
+        }
+        document.body.removeChild(ta);
+    }
 
     const teamIds = ["red", "green", "blue", "white", "yellow", "pink"];
 
@@ -1894,32 +2024,7 @@ input[type="number"] {
     }
     // --- End MQTT Related Functions ---
 
-    // Ensure MQTT is initialized when the DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        // Load team visibility and names first
-        const teams = ['red', 'green', 'blue', 'white', 'yellow', 'pink'];
-        teams.forEach(team => {
-            const isHidden = localStorage.getItem(`hideTeam-${team}`);
-            const checkbox = document.querySelector(`#settingsMenu input[data-team="${team}"]`);
-            if (isHidden === 'true') {
-                document.body.classList.add(`hide-${team}`);
-                if (checkbox) checkbox.checked = false;
-            } else {
-                 if (checkbox) checkbox.checked = true;
-            }
-
-            const savedName = localStorage.getItem(`teamName-${team}`);
-            if (savedName) {
-                teamNames[team] = savedName;
-                document.querySelector(`.team-setting[data-team="${team}"] .team-label`).textContent = savedName;
-                document.querySelector(`#teamTotal > div:nth-child(${teams.indexOf(team) + 1}) .team-name`).textContent = savedName;
-            }
-        });
-
-        // Load MQTT settings and then initialize MQTT client
-
-        startMqtt();
-    });
+    // (Legacy visibility loader removed to prevent desync)
 
 
 
