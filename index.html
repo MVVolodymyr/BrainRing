@@ -1726,7 +1726,7 @@ input[type="number"] {
                 // Рендеримо обрані питання при завантаженні
                 renderFavorites();
                 // Ініціалізуємо MQTT після завантаження
-                startMqtt?.();
+                // startMqtt?.(); // Commented out to prevent connection errors
         });
         function generateStatistics() {
             const tbody = document.querySelector("#statisticsTable tbody");
@@ -1964,6 +1964,8 @@ input[type="number"] {
 
 
 
+    // MQTT connection commented out to prevent connection errors
+    /*
     function startMqtt() {
     const ADAFRUIT_USERNAME = "vmishchenko";
     const ADAFRUIT_IO_KEY = "aio_hYwv68ztp0y0FpmvqtA38dQU8tGB";
@@ -2006,9 +2008,12 @@ input[type="number"] {
     client.on('close', () => console.log("🔌 MQTT connection closed"));
     client.on('offline', () => console.log("📴 MQTT offline"));
     client.on('reconnect', () => console.log("🔁 Reconnecting..."));
-}
+    }
+    */
 
 
+    // MQTT publish function commented out
+    /*
     function publishMqttMessage(topic, message) {
         if (client && client.connected) {
             client.publish(topic, message, {qos: 0, retain: false}, (err) => {
@@ -2022,6 +2027,7 @@ input[type="number"] {
             console.warn("MQTT client not connected. Message not published.");
         }
     }
+    */
     // --- End MQTT Related Functions ---
 
     // (Legacy visibility loader removed to prevent desync)
